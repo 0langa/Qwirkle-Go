@@ -148,10 +148,11 @@ export function renderBoardGrid(container, { boardMap, tentativePlacements, inte
 
       const classes = ["board-cell"];
       if (!tile && interactive) classes.push("clickable");
+      if (!tile && cell.x === 0 && cell.y === 0) classes.push("center-origin");
 
       const inner = tile
         ? renderTileHtml(tile, { tentative: Boolean(tentativeTile) })
-        : "";
+        : (cell.x === 0 && cell.y === 0 ? '<span class="center-marker" aria-hidden="true"></span>' : "");
 
       // Tentative tiles are clickable (to remove), permanent tiles are not
       const disabled = !interactive && !tentativeTile ? "disabled" : "";

@@ -802,6 +802,31 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
 
 .topbar-right { display: flex; align-items: center; gap: 0.4rem; }
 
+.zoom-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+}
+
+.zoom-btn {
+  min-width: 2rem;
+  font-weight: 800;
+  font-size: 0.95rem;
+  padding: 0.34rem 0.58rem;
+}
+
+.zoom-reset-btn {
+  min-width: 4rem;
+  justify-content: center;
+  padding: 0.34rem 0.55rem;
+}
+
+#zoom-level-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 .game-status-badge {
   font-size: 0.78rem;
   font-weight: 700;
@@ -885,6 +910,7 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
 /* Board grid */
 .board-grid {
   --cell: 54px;
+  --tile-size: 46px;
   display: grid;
   grid-auto-rows: var(--cell);
   gap: 3px;
@@ -922,6 +948,20 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
   background: var(--board-drop);
   border-color: rgba(100,220,140,0.7);
   border-width: 2px;
+}
+
+.board-cell.center-origin {
+  border-color: rgba(255,255,255,0.42);
+}
+
+.center-marker {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.92);
+  border: 2px solid rgba(37,99,235,0.85);
+  box-shadow: 0 0 0 5px rgba(37,99,235,0.18);
+  pointer-events: none;
 }
 
 /* ═══════════════════════════════════════════

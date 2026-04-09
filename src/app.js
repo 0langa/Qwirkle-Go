@@ -56,6 +56,13 @@ let dragState = null;
 let panState = null;
 let suppressBoardClickUntil = 0;
 let suppressRackClickUntil = 0;
+let boardZoom = 1;
+let pinchState = null;
+const activeTouchPointers = new Map();
+
+const MIN_BOARD_ZOOM = 0.65;
+const MAX_BOARD_ZOOM = 1.8;
+const ZOOM_STEP = 0.1;
 
 // ─── Busy ────────────────────────────────────────────────────────────────────
 
@@ -262,6 +269,60 @@ function centerBoardNow() {
   scroller.scrollTop  = (scroller.scrollHeight - scroller.clientHeight) / 2;
 }
 
+function getBoardBaseSizes() {
+  const compact = window.matchMedia("(max-width: 600px)").matches;
+  return compact
+    ? { cell: 46, tile: 38 }
+    : { cell: 54, tile: 46 };
+}
+
+function updateZoomUi() {
+  if (ui.elements.zoomLevelLabel) {
+    ui.elements.zoomLevelLabel.textContent = `${Math.round(boardZoom * 100)}%`;
+  }
+  if (ui.elements.zoomOutBtn) {
+    ui.elements.zoomOutBtn.disabled = boardZoom <= MIN_BOARD_ZOOM + 0.001;
+  }
+  if (ui.elements.zoomInBtn) {
+    ui.elements.zoomInBtn.disabled = boardZoom >= MAX_BOARD_ZOOM - 0.001;
+  }
+}
+
+function applyBoardZoom(nextZoom, pivotClientX = null, pivotClientY = null) {
+  const grid = ui.elements.boardGrid;
+  const scroller = ui.elements.boardScroll;
+  if (!grid || !scroller) return;
+
+  const clamped = Math.min(MAX_BOARD_ZOOM, Math.max(MIN_BOARD_ZOOM, nextZoom));
+  const prev = boardZoom;
+  if (Math.abs(clamped - prev) < 0.0001) return;
+
+  const rect = scroller.getBoundingClientRect();
+  const pivotX = pivotClientX == null ? rect.width / 2 : (pivotClientX - rect.left);
+  const pivotY = pivotClientY == null ? rect.height / 2 : (pivotClientY - rect.top);
+  const oldLeft = scroller.scrollLeft;
+  const oldTop = scroller.scrollTop;
+  const ratio = clamped / prev;
+
+  boardZoom = clamped;
+  const sizes = getBoardBaseSizes();
+  grid.style.setProperty("--cell", `${sizes.cell * boardZoom}px`);
+  grid.style.setProperty("--tile-size", `${sizes.tile * boardZoom}px`);
+
+  scroller.scrollLeft = (oldLeft + pivotX) * ratio - pivotX;
+  scroller.scrollTop = (oldTop + pivotY) * ratio - pivotY;
+  updateZoomUi();
+}
+
+function refreshBoardZoomStyles() {
+  const grid = ui.elements.boardGrid;
+  if (!grid) return;
+  const sizes = getBoardBaseSizes();
+  grid.style.setProperty("--cell", `${sizes.cell * boardZoom}px`);
+  grid.style.setProperty("--tile-size", `${sizes.tile * boardZoom}px`);
+  updateZoomUi();
+}
+
 // ─── Action button state ─────────────────────────────────────────────────────
 
 function updateActionButtonState() {
@@ -380,6 +441,7 @@ function renderGame(snapshot) {
     game.turnOrder || []
   );
 
+  refreshBoardZoomStyles();
   renderBoardGrid(ui.elements.boardGrid, {
     boardMap:            game.board || {},
     tentativePlacements: state.tentativePlacements,
@@ -861,6 +923,23 @@ function initBoardPanning() {
     if (event.pointerType === "mouse" && event.button !== 0) return;
     if (dragState || pendingDrag) return;
 
+    if (event.pointerType === "touch") {
+      activeTouchPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (activeTouchPointers.size === 2) {
+        const points = [...activeTouchPointers.values()];
+        const dist = Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y);
+        pinchState = {
+          distance: dist,
+        };
+        panState = null;
+        scroller.classList.remove("panning");
+        return;
+      }
+      if (activeTouchPointers.size > 1) {
+        return;
+      }
+    }
+
     panState = {
       pointerId: event.pointerId,
       startX: event.clientX,
@@ -875,6 +954,26 @@ function initBoardPanning() {
   });
 
   scroller.addEventListener("pointermove", (event) => {
+    if (event.pointerType === "touch" && activeTouchPointers.has(event.pointerId)) {
+      activeTouchPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+
+    if (pinchState && activeTouchPointers.size >= 2) {
+      const points = [...activeTouchPointers.values()];
+      const midX = (points[0].x + points[1].x) / 2;
+      const midY = (points[0].y + points[1].y) / 2;
+      const dist = Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y);
+
+      if (pinchState.distance > 0 && dist > 0) {
+        const scale = dist / pinchState.distance;
+        applyBoardZoom(boardZoom * scale, midX, midY);
+      }
+      pinchState.distance = dist;
+      suppressBoardClickUntil = performance.now() + 260;
+      event.preventDefault();
+      return;
+    }
+
     if (!panState || event.pointerId !== panState.pointerId) return;
 
     const dx = event.clientX - panState.startX;
@@ -890,6 +989,18 @@ function initBoardPanning() {
   }, { passive: false });
 
   function endPan(event) {
+    if (event.pointerType === "touch") {
+      activeTouchPointers.delete(event.pointerId);
+      if (activeTouchPointers.size < 2) {
+        pinchState = null;
+      }
+    }
+
+    if (pinchState) {
+      suppressBoardClickUntil = performance.now() + 260;
+      return;
+    }
+
     if (!panState || event.pointerId !== panState.pointerId) return;
     if (panState.moved) {
       suppressBoardClickUntil = performance.now() + 220;
@@ -900,6 +1011,13 @@ function initBoardPanning() {
 
   scroller.addEventListener("pointerup", endPan);
   scroller.addEventListener("pointercancel", endPan);
+
+  scroller.addEventListener("wheel", (event) => {
+    if (!(event.ctrlKey || event.metaKey)) return;
+    const factor = event.deltaY < 0 ? 1.08 : 1 / 1.08;
+    applyBoardZoom(boardZoom * factor, event.clientX, event.clientY);
+    event.preventDefault();
+  }, { passive: false });
 }
 
 // ─── Game actions ─────────────────────────────────────────────────────────────
@@ -1052,6 +1170,18 @@ function handleCenterBoard() {
   centerBoardNow();
 }
 
+function handleZoomIn() {
+  applyBoardZoom(boardZoom + ZOOM_STEP);
+}
+
+function handleZoomOut() {
+  applyBoardZoom(boardZoom - ZOOM_STEP);
+}
+
+function handleZoomReset() {
+  applyBoardZoom(1);
+}
+
 // ─── Event binding ───────────────────────────────────────────────────────────
 
 function bindUiEvents() {
@@ -1091,10 +1221,14 @@ function bindUiEvents() {
   ui.elements.exchangeSelectedBtn.addEventListener("click", handleExchangeSelected);
   ui.elements.passTurnBtn.addEventListener("click",        handlePassTurn);
   ui.elements.devDeleteGameBtn.addEventListener("click",   handleDevDeleteGame);
+  ui.elements.zoomOutBtn.addEventListener("click",         handleZoomOut);
+  ui.elements.zoomInBtn.addEventListener("click",          handleZoomIn);
+  ui.elements.zoomResetBtn.addEventListener("click",       handleZoomReset);
   ui.elements.centerBoardBtn.addEventListener("click",     handleCenterBoard);
   ui.elements.rackHelpToggleBtn.addEventListener("click",  toggleRackHelp);
 
   window.addEventListener("beforeunload", () => detachPresence());
+  window.addEventListener("resize", refreshBoardZoomStyles);
 
   // Drag and drop
   initDragAndDrop();
@@ -1159,5 +1293,6 @@ export async function startApp() {
     openLanding("Erstelle ein neues Spiel oder tritt mit einem Code bei.");
   }
 
+  refreshBoardZoomStyles();
   updateActionButtonState();
 }
