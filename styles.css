@@ -461,8 +461,13 @@ button.danger:hover:not(:disabled) {
 .rack {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 0.55rem;
   min-height: 64px;
+}
+
+#rack-help-text {
+  text-align: center;
 }
 
 .rack-tile {
