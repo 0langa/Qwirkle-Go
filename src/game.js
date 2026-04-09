@@ -115,13 +115,6 @@ export async function commitMove(codeInput, uid, draftPlacements) {
       return;
     }
 
-    const openingBlocked =
-      Object.keys(game.board || {}).length === 0 && game.openingRequirement?.uid === uid;
-    if (openingBlocked) {
-      failure.value = "Opening player must place one of the required opening groups.";
-      return;
-    }
-
     const rack = game.racks?.[uid] || [];
     const tileIds = draftPlacements.map((item) => item.tileId);
     if (!ensureRackContains(rack, tileIds)) {
