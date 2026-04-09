@@ -14,6 +14,10 @@ import {
   shuffleWithRandom,
   sanitizeJoinCode,
 } from "./utils.js";
+import {
+  canHostSkipOfflineTurn,
+  hasOpeningPlacementRequirement,
+} from "./turn-guards.js";
 
 function nextRevision(meta) {
   return Number(meta?.revision || 0) + 1;
@@ -230,6 +234,11 @@ export async function exchangeTiles(codeInput, uid, selectedTileIds) {
       return;
     }
 
+    if (hasOpeningPlacementRequirement(game, uid)) {
+      failure.value = "Der Startspieler muss zuerst den Eroeffnungszug legen und kann nicht tauschen.";
+      return;
+    }
+
     const rack = game.racks?.[uid] || [];
     if (!ensureRackContains(rack, ids)) {
       failure.value = "Ausgewaehlte Teile sind nicht mehr in deinem Ablagestaender.";
@@ -314,6 +323,49 @@ export async function passTurn(codeInput, uid) {
       advanceTurn(game);
     }
 
+    state.meta.revision = nextRevision(state.meta);
+    return state;
+  });
+
+  if (!result.committed) {
+    throw new Error(failure.value);
+  }
+}
+
+export async function skipOfflineTurn(codeInput, requesterUid) {
+  const code = sanitizeJoinCode(codeInput);
+  if (!code) {
+    throw new Error("Spielcode fehlt.");
+  }
+
+  const failure = { value: "Offline-Spieler konnte nicht übersprungen werden." };
+
+  const result = await transact(`games/${code}`, (current) => {
+    const state = getGameAndMeta(current, failure);
+    if (!state) {
+      return;
+    }
+
+    const game = state.game;
+    const guard = canHostSkipOfflineTurn(state, requesterUid, nowMs());
+    if (!guard.ok) {
+      failure.value = guard.reason;
+      return;
+    }
+    const currentUid = guard.skippedUid;
+
+    addHistoryEntry(game, {
+      type: "skip_offline",
+      byUid: requesterUid,
+      skippedUid: currentUid,
+    });
+
+    if (hasOpeningPlacementRequirement(game, currentUid)) {
+      game.openingRequirement = null;
+    }
+
+    game.consecutivePasses = 0;
+    advanceTurn(game);
     state.meta.revision = nextRevision(state.meta);
     return state;
   });

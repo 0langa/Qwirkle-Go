@@ -324,6 +324,23 @@ code {
 .btn-danger-sm:disabled { opacity: 0.42; cursor: not-allowed; }
 .btn-danger-sm:focus-visible { outline: 3px solid rgba(220,38,38,0.25); outline-offset: 2px; }
 
+.btn-warning-sm {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+  border-radius: var(--r-sm);
+  padding: 0.48rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease, transform 100ms ease;
+  white-space: nowrap;
+}
+.btn-warning-sm:hover:not(:disabled) { background: #fde68a; }
+.btn-warning-sm:not(:disabled):active { transform: translateY(1px); }
+.btn-warning-sm:disabled { opacity: 0.42; cursor: not-allowed; }
+.btn-warning-sm:focus-visible { outline: 3px solid rgba(245,158,11,0.32); outline-offset: 2px; }
+
 .btn-commit {
   background: linear-gradient(135deg, #1d8c4f 0%, #16a34a 100%);
   color: #fff;
@@ -660,6 +677,7 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
 .tag-host    { background: #dbeafe; color: #1d4ed8; }
 .tag-you     { background: #d1fae5; color: #065f46; }
 .tag-offline { background: #fef3c7; color: #92400e; }
+.tag-ready   { background: #dcfce7; color: #166534; }
 
 /* Score list (also used in game) */
 .score-list {
@@ -853,6 +871,43 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
   color: var(--muted);
 }
 
+.history-panel {
+  margin-top: 0.35rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.55rem;
+}
+
+.history-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+
+.history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.history-item {
+  font-size: 0.74rem;
+  color: var(--ink-soft);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.36rem 0.48rem;
+}
+
+.history-item.empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
 /* Board area */
 .board-area {
   overflow: hidden;
@@ -933,6 +988,12 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
 
 .board-cell.center-origin {
   border-color: rgba(255,255,255,0.42);
+}
+
+.board-cell.keyboard-focus,
+.board-cell.keyboard-focus:focus-visible {
+  outline: 3px solid rgba(37,99,235,0.68);
+  outline-offset: 2px;
 }
 
 .center-marker {
@@ -1303,6 +1364,12 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
     flex: 1;
   }
 
+  .history-panel {
+    width: 100%;
+    margin-top: 0.2rem;
+    padding-top: 0.45rem;
+  }
+
   .score-row {
     flex-direction: column;
     align-items: center;
@@ -1344,6 +1411,7 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
   .action-group-sep { margin-left: 0; }
   .btn-commit { font-size: 0.85rem; padding: 0.6rem 1rem; }
   .btn-dev-inline { padding: 0.44rem 0.6rem; font-size: 0.7rem; }
+  .btn-warning-sm { padding: 0.44rem 0.6rem; font-size: 0.72rem; }
 
   .game-topbar { flex-wrap: wrap; }
   .game-status-badge { display: none; }

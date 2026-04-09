@@ -23,6 +23,7 @@ export function createUi() {
     lobbyPlayers: document.getElementById("lobby-players"),
     copyCodeBtn: document.getElementById("copy-code-btn"),
     leaveLobbyBtn: document.getElementById("leave-lobby-btn"),
+    readyToggleBtn: document.getElementById("ready-toggle-btn"),
     startGameBtn: document.getElementById("start-game-btn"),
     lobbyMessage: document.getElementById("lobby-message"),
 
@@ -36,6 +37,7 @@ export function createUi() {
     zoomLevelLabel: document.getElementById("zoom-level-label"),
     centerBoardBtn: document.getElementById("center-board-btn"),
     scoreboard: document.getElementById("scoreboard"),
+    moveHistoryList: document.getElementById("move-history-list"),
     boardScroll: document.getElementById("board-scroll"),
     boardGrid: document.getElementById("board-grid"),
     rack: document.getElementById("rack"),
@@ -47,6 +49,7 @@ export function createUi() {
     exchangeModeBtn: document.getElementById("exchange-mode-btn"),
     exchangeSelectedBtn: document.getElementById("exchange-selected-btn"),
     passTurnBtn: document.getElementById("pass-turn-btn"),
+    skipOfflineBtn: document.getElementById("skip-offline-btn"),
     devDeleteGameBtn: document.getElementById("dev-delete-game-btn"),
     gameMessage: document.getElementById("game-message"),
 

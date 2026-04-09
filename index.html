@@ -61,7 +61,7 @@
                 Neues Spiel erstellen
               </button>
 
-              <button id="dev-enter-game-btn" class="btn btn-dev-entry" type="button">
+              <button id="dev-enter-game-btn" class="btn btn-dev-entry hidden" type="button">
                 Dev: Direkt ins Spielfeld (lokaler Testmodus)
               </button>
 
@@ -121,6 +121,7 @@
 
             <div class="lobby-footer">
               <p id="lobby-message" class="message" aria-live="polite"></p>
+              <button id="ready-toggle-btn" class="btn btn-secondary btn-sm" type="button">Ich bin bereit</button>
               <button id="start-game-btn" class="btn btn-primary btn-lg">Spiel starten</button>
             </div>
 
@@ -167,6 +168,10 @@
             <aside class="scores-sidebar">
               <h3 class="sidebar-title">Punkte</h3>
               <ul id="scoreboard" class="score-list"></ul>
+              <div class="history-panel">
+                <h4 class="history-title">Letzte Züge</h4>
+                <ul id="move-history-list" class="history-list" aria-live="polite"></ul>
+              </div>
             </aside>
 
             <!-- Board -->
@@ -223,7 +228,8 @@
                   Tausch OK
                 </button>
                 <button id="pass-turn-btn" class="btn btn-danger-sm">Passen</button>
-                <button id="dev-delete-game-btn" class="btn btn-dev-inline">Dev: Spiel löschen</button>
+                <button id="skip-offline-btn" class="btn btn-warning-sm" type="button">Offline überspringen</button>
+                <button id="dev-delete-game-btn" class="btn btn-dev-inline hidden">Dev: Spiel löschen</button>
               </div>
             </div>
 

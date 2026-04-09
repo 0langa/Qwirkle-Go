@@ -4,8 +4,8 @@
     ".write": false,
     "games": {
       "$code": {
-        ".read": "auth != null",
-        ".write": "auth != null && $code.matches(/^[A-Z0-9]{4,8}$/)"
+        ".read": "auth != null && $code.matches(/^[A-Z0-9]{4,8}$/)",
+        ".write": "auth != null && $code.matches(/^[A-Z0-9]{4,8}$/) && (( !newData.exists() && data.exists() && data.child('meta/status').val() === 'lobby' && data.child('players').child(auth.uid).exists() && data.child('players').childrenCount() === 1 ) || ( newData.exists() && (( !data.exists() && newData.child('meta/hostUid').val() === auth.uid && newData.child('meta/status').val() === 'lobby' && newData.child('players').child(auth.uid).exists() ) || ( data.exists() && ( data.child('players').child(auth.uid).exists() || ( data.child('meta/status').val() === 'lobby' && !data.child('players').child(auth.uid).exists() && newData.child('players').child(auth.uid).exists() ) ) )) ) )"
       }
     }
   }

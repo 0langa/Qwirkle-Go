@@ -15,9 +15,11 @@ import {
   seededRandom,
   sortPlayersByJoin,
 } from "./utils.js";
-
-const MAX_PLAYERS = 4;
-const MIN_PLAYERS = 2;
+import {
+  evaluateLobbyStartReadiness,
+  MAX_PLAYERS,
+  MIN_PLAYERS,
+} from "./lobby-readiness.js";
 
 export class LobbyFlowError extends Error {
   constructor(code, message, details = null) {
@@ -28,12 +30,13 @@ export class LobbyFlowError extends Error {
   }
 }
 
-function createPlayer(uid, name, isHost, joinedAt) {
+function createPlayer(uid, name, isHost, joinedAt, ready = false) {
   return {
     uid,
     name,
     isHost,
     joinedAt,
+    ready: Boolean(ready),
     connected: true,
     lastSeenAt: joinedAt,
   };
@@ -341,10 +344,11 @@ export async function joinLobby(codeInput, uid, displayName) {
 
       const joinedAt = players[resolvedUid]?.joinedAt || nowMs();
       const isHost = meta.hostUid === resolvedUid;
+      const wasReady = Boolean(players[resolvedUid]?.ready);
 
       base.players = {
         ...players,
-        [resolvedUid]: createPlayer(resolvedUid, name, isHost, joinedAt),
+        [resolvedUid]: createPlayer(resolvedUid, name, isHost, joinedAt, wasReady),
       };
 
       base.meta = {
@@ -469,9 +473,19 @@ export async function startGame(codeInput, uid) {
       }
 
       const playerList = sortPlayersByJoin(players);
-      const count = playerList.length;
-      if (count < MIN_PLAYERS || count > MAX_PLAYERS) {
+      const readiness = evaluateLobbyStartReadiness(players);
+      if (readiness.count < MIN_PLAYERS || readiness.count > MAX_PLAYERS) {
         failure = "Zum Starten werden 2 bis 4 Spieler benoetigt.";
+        return;
+      }
+
+      if (!readiness.allConnected) {
+        failure = "Alle Spieler muessen verbunden sein, um zu starten.";
+        return;
+      }
+
+      if (!readiness.allReady) {
+        failure = "Alle Spieler muessen als bereit markiert sein.";
         return;
       }
 
@@ -529,6 +543,57 @@ export async function startGame(codeInput, uid) {
   }
 
   ensureTransactionResult(result, failure || "Spiel konnte nicht gestartet werden.");
+  return result.snapshot?.val() || null;
+}
+
+export async function setLobbyReady(codeInput, uid, ready) {
+  const resolvedUid = await resolveUid(uid);
+  const code = sanitizeJoinCode(codeInput);
+  if (!code) {
+    throw new LobbyFlowError("invalid-join-code", "Beitrittscode fehlt.");
+  }
+
+  const nextReady = Boolean(ready);
+  let failure = "";
+
+  let result;
+  try {
+    result = await transact(`games/${code}`, (current) => {
+      if (!current) {
+        failure = "Lobby nicht gefunden.";
+        return;
+      }
+
+      const meta = current.meta || {};
+      if (meta.status !== "lobby") {
+        failure = "Bereitschaft kann nur in der Lobby gesetzt werden.";
+        return;
+      }
+
+      const players = { ...(current.players || {}) };
+      const me = players[resolvedUid];
+      if (!me) {
+        failure = "Du bist nicht mehr in dieser Lobby.";
+        return;
+      }
+
+      players[resolvedUid] = {
+        ...me,
+        ready: nextReady,
+      };
+
+      current.players = players;
+      current.meta = {
+        ...meta,
+        revision: nextRevision(meta),
+      };
+      return current;
+    });
+  } catch (error) {
+    throw mapFirebaseError(error);
+  }
+
+  ensureTransactionResult(result, failure || "Bereitschaft konnte nicht gesetzt werden.");
   return result.snapshot?.val() || null;
 }
 

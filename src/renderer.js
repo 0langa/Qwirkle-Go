@@ -79,6 +79,7 @@ export function renderLobbyPlayers(container, playersByUid, currentUid) {
       const tags = [];
       if (player.isHost)  tags.push('<span class="tag tag-host">Host</span>');
       if (isCurrent)      tags.push('<span class="tag tag-you">Du</span>');
+      if (player.connected && player.ready) tags.push('<span class="tag tag-ready">Bereit</span>');
       if (!player.connected) tags.push('<span class="tag tag-offline">Offline</span>');
 
       return `
@@ -189,10 +190,46 @@ export function renderBoardGrid(container, { boardMap, tentativePlacements, inte
           class="${classes.join(" ")}"
           data-board-x="${cell.x}"
           data-board-y="${cell.y}"
+          tabindex="-1"
           ${disabled}
           aria-label="Feld ${cell.x},${cell.y}"
         >${inner}</button>`;
     })
+    .join("");
+}
+
+export function renderMoveHistory(container, playersByUid, moveHistory) {
+  const entries = Object.values(moveHistory || {})
+    .sort((a, b) => Number(b.moveNumber || 0) - Number(a.moveNumber || 0))
+    .slice(0, 6);
+
+  if (!entries.length) {
+    container.innerHTML = '<li class="history-item empty">Noch keine Züge.</li>';
+    return;
+  }
+
+  const nameOf = (uid) => playersByUid?.[uid]?.name || "Unbekannt";
+  const describe = (entry) => {
+    if (entry.type === "move") {
+      return `${nameOf(entry.uid)}: gelegt (${entry.tileIds?.length || 0}) · +${Number(entry.scoreGain || 0)}`;
+    }
+    if (entry.type === "exchange") {
+      return `${nameOf(entry.uid)}: getauscht (${entry.tileIds?.length || 0})`;
+    }
+    if (entry.type === "pass") {
+      return `${nameOf(entry.uid)}: passt`;
+    }
+    if (entry.type === "skip_offline") {
+      return `${nameOf(entry.byUid)}: ${nameOf(entry.skippedUid)} übersprungen (offline)`;
+    }
+    if (entry.type === "end_bonus") {
+      return `${nameOf(entry.uid)}: Endbonus +${Number(entry.scoreGain || 0)}`;
+    }
+    return `${nameOf(entry.uid)}: ${entry.type || "Aktion"}`;
+  };
+
+  container.innerHTML = entries
+    .map((entry) => `<li class="history-item">#${Number(entry.moveNumber || 0)} · ${escapeHtml(describe(entry))}</li>`)
     .join("");
 }
 

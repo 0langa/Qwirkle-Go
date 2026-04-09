@@ -8,8 +8,11 @@ It is designed for honest casual play with friends and family: no backend server
 
 - Create or join lobbies with short uppercase join codes.
 - Realtime lobby updates (players, host badge, player count).
+- Ready-check lobby flow (all connected + ready required before start).
 - Host-only start flow for 2-4 players.
 - Full live multiplayer turn sync via Firebase Realtime Database.
+- Invite-link copy from lobby (`?join=CODE`) for faster joins.
+- Host recovery action to skip offline current-player turns after a grace period.
 - Centralized Qwirkle rules engine:
   - 108-tile set generation (6 colors x 6 shapes x 3 copies)
   - opening group detection and deterministic first-player selection
@@ -23,6 +26,7 @@ It is designed for honest casual play with friends and family: no backend server
 - Session recovery support using local storage + Firebase anonymous auth persistence.
 - Missing Firebase config handling via in-app setup screen (no white screen crash).
 - Browser-based no-dependency rules test harness.
+- Node-based CI test suite for core rules/guards.
 
 ## Stack
 
@@ -128,6 +132,12 @@ vercel --prod
 
 Open `tests/tests.html` in a browser to run rule tests.
 
+For automated CLI/CI tests:
+
+```bash
+node --test tests/*.node.test.mjs
+```
+
 Covered cases include:
 
 - tile count
@@ -139,6 +149,9 @@ Covered cases include:
 - Qwirkle bonus scoring
 - end-game bonus scoring
 - exchange legality
+- lobby readiness gating
+- opening/deadlock guard behavior
+- offline skip guard behavior
 
 ## Known Limitations
 

@@ -8,12 +8,20 @@ import {
   waitForAuthUser,
   write,
 } from "./firebase.js";
-import { commitMove, exchangeTiles, passTurn } from "./game.js";
-import { joinLobby, createLobby, leaveLobby, startGame } from "./lobby.js";
+import { commitMove, exchangeTiles, passTurn, skipOfflineTurn } from "./game.js";
+import {
+  joinLobby,
+  createLobby,
+  leaveLobby,
+  startGame,
+  setLobbyReady,
+} from "./lobby.js";
+import { evaluateLobbyStartReadiness } from "./lobby-readiness.js";
 import {
   buildResultSummary,
   renderBoardGrid,
   renderLobbyPlayers,
+  renderMoveHistory,
   renderRack,
   renderScoreboard,
   renderTileHtml,
@@ -41,6 +49,10 @@ import {
   sanitizeDisplayName,
   sanitizeJoinCode,
 } from "./utils.js";
+import {
+  hasOpeningPlacementRequirement,
+  OFFLINE_SKIP_GRACE_MS,
+} from "./turn-guards.js";
 
 const ui = createUi();
 
@@ -63,6 +75,12 @@ const activeTouchPointers = new Map();
 const MIN_BOARD_ZOOM = 0.65;
 const MAX_BOARD_ZOOM = 1.8;
 const ZOOM_STEP = 0.1;
+const DEV_QUERY_ENABLED =
+  new URLSearchParams(window.location.search).get("dev") === "1";
+const DEV_HOST_ENABLED = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+const DEV_MODE = DEV_QUERY_ENABLED || DEV_HOST_ENABLED;
+
+let boardKeyboardFocus = { x: 0, y: 0 };
 
 // ─── Busy ────────────────────────────────────────────────────────────────────
 
@@ -214,6 +232,7 @@ function createDevSandboxSnapshot(currentUid) {
 }
 
 async function handleDevEnterGame() {
+  if (!DEV_MODE) return;
   clearMessages();
   ui.hideResultDialog();
   dropGameSubscription();
@@ -323,6 +342,73 @@ function refreshBoardZoomStyles() {
   updateZoomUi();
 }
 
+function applyDevUiVisibility() {
+  const devEntry = ui.elements.devEnterGameBtn;
+  const devDelete = ui.elements.devDeleteGameBtn;
+
+  if (devEntry) {
+    devEntry.classList.toggle("hidden", !DEV_MODE);
+  }
+  if (devDelete) {
+    devDelete.classList.toggle("hidden", !DEV_MODE);
+  }
+}
+
+function getBoardCellElement(x, y) {
+  return ui.elements.boardGrid?.querySelector(
+    `[data-board-x="${x}"][data-board-y="${y}"]`
+  ) || null;
+}
+
+function setBoardKeyboardFocusCell(cell, focusDom = false) {
+  if (!cell) return;
+
+  const x = Number(cell.dataset.boardX);
+  const y = Number(cell.dataset.boardY);
+  boardKeyboardFocus = { x, y };
+
+  const cells = ui.elements.boardGrid?.querySelectorAll("[data-board-x][data-board-y]") || [];
+  cells.forEach((entry) => {
+    entry.tabIndex = -1;
+    entry.classList.remove("keyboard-focus");
+  });
+
+  cell.tabIndex = 0;
+  cell.classList.add("keyboard-focus");
+  if (focusDom) {
+    cell.focus({ preventScroll: true });
+  }
+}
+
+function syncBoardKeyboardFocus(focusDom = false) {
+  const preferred = getBoardCellElement(boardKeyboardFocus.x, boardKeyboardFocus.y);
+  if (preferred) {
+    setBoardKeyboardFocusCell(preferred, focusDom);
+    return;
+  }
+  const center = getBoardCellElement(0, 0);
+  if (center) {
+    setBoardKeyboardFocusCell(center, focusDom);
+    return;
+  }
+  const first = ui.elements.boardGrid?.querySelector("[data-board-x][data-board-y]");
+  if (first) {
+    setBoardKeyboardFocusCell(first, focusDom);
+  }
+}
+
+function moveBoardKeyboardFocus(dx, dy) {
+  const current = getBoardCellElement(boardKeyboardFocus.x, boardKeyboardFocus.y);
+  const origin = current || ui.elements.boardGrid?.querySelector("[data-board-x][data-board-y]");
+  if (!origin) return;
+  const currentX = Number(origin.dataset.boardX);
+  const currentY = Number(origin.dataset.boardY);
+  const next = getBoardCellElement(currentX + dx, currentY + dy);
+  if (next) {
+    setBoardKeyboardFocusCell(next, true);
+  }
+}
+
 // ─── Action button state ─────────────────────────────────────────────────────
 
 function updateActionButtonState() {
@@ -330,8 +416,20 @@ function updateActionButtonState() {
   const state = getState();
   const inProgress       = snapshot?.meta?.status === "in_progress";
   const isMyTurn         = myTurn();
+  const openingRequiredForMe = hasOpeningPlacementRequirement(snapshot?.game, authUid);
   const hasTentative     = state.tentativePlacements.length > 0;
   const hasExchangeSel   = state.exchangeSelection.size > 0;
+  const gamePlayers = snapshot?.players || {};
+  const currentPlayerUid = snapshot?.game?.currentPlayerUid || null;
+  const currentPlayer = currentPlayerUid ? gamePlayers[currentPlayerUid] : null;
+  const isHost = snapshot?.meta?.hostUid === authUid;
+  const canSkipOffline =
+    inProgress &&
+    isHost &&
+    !isMyTurn &&
+    Boolean(currentPlayer) &&
+    currentPlayer.connected === false &&
+    (Date.now() - Number(currentPlayer.lastSeenAt || 0) >= OFFLINE_SKIP_GRACE_MS);
 
   ui.elements.commitMoveBtn.disabled =
     actionBusy || !inProgress || !isMyTurn || state.exchangeMode || !hasTentative;
@@ -341,12 +439,20 @@ function updateActionButtonState() {
     actionBusy || !inProgress || !isMyTurn ||
     (!hasTentative && !state.exchangeSelection.size && !state.selectedRackTileId);
   ui.elements.exchangeModeBtn.disabled =
-    actionBusy || !inProgress || !isMyTurn || hasTentative;
+    actionBusy || !inProgress || !isMyTurn || hasTentative || openingRequiredForMe;
   ui.elements.exchangeSelectedBtn.disabled =
-    actionBusy || !inProgress || !isMyTurn || !state.exchangeMode || !hasExchangeSel;
+    actionBusy || !inProgress || !isMyTurn || !state.exchangeMode || !hasExchangeSel || openingRequiredForMe;
   ui.elements.passTurnBtn.disabled =
     actionBusy || !inProgress || !isMyTurn || hasTentative;
-  ui.elements.devDeleteGameBtn.disabled = actionBusy || !activeCode;
+  ui.elements.skipOfflineBtn.classList.toggle("hidden", !inProgress || !isHost);
+  ui.elements.skipOfflineBtn.disabled = actionBusy || !canSkipOffline;
+  ui.elements.skipOfflineBtn.title = canSkipOffline
+    ? "Offline-Spielerzug überspringen"
+    : "Nur der Host kann einen offline Spieler nach 20 Sekunden überspringen";
+
+  if (ui.elements.devDeleteGameBtn) {
+    ui.elements.devDeleteGameBtn.disabled = actionBusy || !activeCode;
+  }
 
   // Visual feedback: exchange mode toggle
   const exchangeBtn = ui.elements.exchangeModeBtn;
@@ -355,7 +461,9 @@ function updateActionButtonState() {
     exchangeBtn.title = "Tauschmodus deaktivieren";
   } else {
     exchangeBtn.classList.remove("btn-confirm");
-    exchangeBtn.title = "Tauschmodus aktivieren";
+    exchangeBtn.title = openingRequiredForMe
+      ? "Während des verpflichtenden Eröffnungszugs ist Tauschen deaktiviert"
+      : "Tauschmodus aktivieren";
   }
 
   // Status badge
@@ -383,7 +491,8 @@ function refreshCurrentGameView() {
 function renderLobby(snapshot) {
   const meta    = snapshot.meta || {};
   const players = snapshot.players || {};
-  const count   = Object.keys(players).length;
+  const readiness = evaluateLobbyStartReadiness(players);
+  const count   = readiness.count;
   const me      = players[authUid];
 
   ui.elements.lobbyCode.textContent  = meta.joinCode || "-----";
@@ -391,10 +500,21 @@ function renderLobby(snapshot) {
   renderLobbyPlayers(ui.elements.lobbyPlayers, players, authUid);
 
   const isHost = meta.hostUid === authUid;
-  ui.elements.startGameBtn.disabled = !isHost || count < 2 || count > 4 || actionBusy;
+  const meReady = Boolean(me?.ready);
+  const canStart = isHost && readiness.canStart && !actionBusy;
+
+  ui.elements.startGameBtn.disabled = !canStart;
   ui.elements.startGameBtn.title    = isHost
-    ? "Starten, wenn 2–4 Spieler bereit sind"
+    ? "Starten, wenn alle verbunden und bereit sind"
     : "Nur der Host kann das Spiel starten";
+
+  ui.elements.readyToggleBtn.disabled = actionBusy;
+  ui.elements.readyToggleBtn.textContent = meReady ? "Nicht bereit" : "Ich bin bereit";
+  ui.elements.readyToggleBtn.classList.toggle("btn-primary", meReady);
+  ui.elements.readyToggleBtn.classList.toggle("btn-secondary", !meReady);
+  ui.elements.readyToggleBtn.title = meReady
+    ? "Als nicht bereit markieren"
+    : "Als bereit markieren";
 
   if (!me) {
     openLanding("Du bist nicht mehr in dieser Lobby.", "error");
@@ -402,11 +522,17 @@ function renderLobby(snapshot) {
   }
 
   ui.showScreen("lobby-screen");
-  setLobbyMessage(
-    isHost
-      ? "Du bist Host. Starte, wenn alle bereit sind."
-      : "Warte auf den Host."
-  );
+  if (!readiness.allConnected) {
+    setLobbyMessage(`Verbunden: ${readiness.connectedCount}/${readiness.count}. Warte auf Rückkehr aller Spieler.`);
+    return;
+  }
+
+  if (!readiness.allReady) {
+    setLobbyMessage(`Bereit: ${readiness.readyCount}/${readiness.count}.`);
+    return;
+  }
+
+  setLobbyMessage(isHost ? "Alle sind bereit. Du kannst starten." : "Alle sind bereit. Warte auf den Host.");
 }
 
 function clearDraftIfOutdated(snapshot) {
@@ -440,6 +566,7 @@ function renderGame(snapshot) {
     authUid,
     game.turnOrder || []
   );
+  renderMoveHistory(ui.elements.moveHistoryList, players, game.moveHistory || {});
 
   refreshBoardZoomStyles();
   renderBoardGrid(ui.elements.boardGrid, {
@@ -447,6 +574,7 @@ function renderGame(snapshot) {
     tentativePlacements: state.tentativePlacements,
     interactive:         isMyTurn,
   });
+  syncBoardKeyboardFocus();
 
   renderRack(
     ui.elements.rack,
@@ -457,11 +585,23 @@ function renderGame(snapshot) {
   );
 
   if (meta.status === "in_progress") {
-    setGameMessage(
-      isMyTurn
-        ? "Du bist dran: Steine legen, tauschen oder passen."
-        : "Warte auf den anderen Spieler…"
-    );
+    const currentPlayer = players?.[game.currentPlayerUid];
+    const currentOffline = currentPlayer && currentPlayer.connected === false;
+    if (currentOffline) {
+      const canSkip = meta.hostUid === authUid && !isMyTurn;
+      setGameMessage(
+        canSkip
+          ? `${currentPlayer.name} ist offline. Du kannst den Zug nach 20 Sekunden überspringen.`
+          : `${currentPlayer.name} ist offline. Warte auf Rückkehr oder auf den Host.`,
+        "error"
+      );
+    } else {
+      setGameMessage(
+        isMyTurn
+          ? "Du bist dran: Steine legen, tauschen oder passen."
+          : "Warte auf den anderen Spieler…"
+      );
+    }
   }
 
   ui.showScreen("game-screen");
@@ -618,6 +758,22 @@ async function handleStartGame() {
   }
 }
 
+async function handleToggleReady() {
+  if (!activeCode) return;
+  const snapshot = currentSnapshot();
+  const me = snapshot?.players?.[authUid];
+  if (!me) return;
+
+  try {
+    setBusy(true);
+    await setLobbyReady(activeCode, authUid, !me.ready);
+  } catch (error) {
+    setLobbyMessage(error.message || "Bereitschaft konnte nicht aktualisiert werden.", "error");
+  } finally {
+    setBusy(false);
+  }
+}
+
 // ─── Tile placement helpers ───────────────────────────────────────────────────
 
 function findTentativeByCell(x, y) {
@@ -731,6 +887,50 @@ function handleBoardClick(event) {
   }
 
   placeTileOnBoard(x, y, selectedTileId, tile);
+}
+
+function handleBoardFocusFromPointer(event) {
+  const button = event.target.closest("[data-board-x][data-board-y]");
+  if (!button) return;
+  setBoardKeyboardFocusCell(button, false);
+}
+
+function handleBoardKeydown(event) {
+  const target = event.target.closest("[data-board-x][data-board-y]");
+  if (!target) return;
+
+  if (event.key === "ArrowUp") {
+    event.preventDefault();
+    moveBoardKeyboardFocus(0, -1);
+    return;
+  }
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+    moveBoardKeyboardFocus(0, 1);
+    return;
+  }
+  if (event.key === "ArrowLeft") {
+    event.preventDefault();
+    moveBoardKeyboardFocus(-1, 0);
+    return;
+  }
+  if (event.key === "ArrowRight") {
+    event.preventDefault();
+    moveBoardKeyboardFocus(1, 0);
+    return;
+  }
+  if (event.key === "Home") {
+    event.preventDefault();
+    const center = getBoardCellElement(0, 0);
+    if (center) {
+      setBoardKeyboardFocusCell(center, true);
+    }
+    return;
+  }
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    target.click();
+  }
 }
 
 // ─── Drag & Drop ─────────────────────────────────────────────────────────────
@@ -1062,6 +1262,10 @@ async function handleCommitMove() {
 
 function toggleExchangeMode() {
   const state = getState();
+  if (hasOpeningPlacementRequirement(currentSnapshot()?.game, authUid)) {
+    setGameMessage("Lege zuerst den verpflichtenden Eröffnungszug. Tauschen ist bis dahin gesperrt.", "error");
+    return;
+  }
   if (state.tentativePlacements.length > 0) {
     setGameMessage("Bestätige oder verwerfe zuerst deinen Zug.", "error");
     return;
@@ -1074,6 +1278,10 @@ function toggleExchangeMode() {
 
 async function handleExchangeSelected() {
   if (!myTurn()) return;
+  if (hasOpeningPlacementRequirement(currentSnapshot()?.game, authUid)) {
+    setGameMessage("Tauschen ist im verpflichtenden Eröffnungszug nicht erlaubt.", "error");
+    return;
+  }
   const state = getState();
   if (!state.exchangeMode) {
     setGameMessage("Aktiviere zuerst den Tauschmodus.", "error");
@@ -1116,7 +1324,21 @@ async function handlePassTurn() {
   }
 }
 
+async function handleSkipOffline() {
+  if (!activeCode) return;
+  try {
+    setBusy(true);
+    await skipOfflineTurn(activeCode, authUid);
+    setGameMessage("Offline-Spieler wurde übersprungen.", "success");
+  } catch (error) {
+    setGameMessage(error.message || "Offline-Spieler konnte nicht übersprungen werden.", "error");
+  } finally {
+    setBusy(false);
+  }
+}
+
 async function handleDevDeleteGame() {
+  if (!DEV_MODE) return;
   if (!activeCode) {
     setGameMessage("Kein aktives Spiel zum Löschen.", "error");
     return;
@@ -1142,11 +1364,12 @@ async function copyJoinCode() {
   const code = activeCode || currentSnapshot()?.meta?.joinCode;
   if (!code) return;
   try {
-    await navigator.clipboard.writeText(code);
+    const inviteUrl = `${window.location.origin}${window.location.pathname}?join=${encodeURIComponent(code)}`;
+    await navigator.clipboard.writeText(inviteUrl);
     const btn = ui.elements.copyCodeBtn;
     btn.classList.add("copied");
     btn.textContent = "Kopiert!";
-    setLobbyMessage("Code in die Zwischenablage kopiert.", "success");
+    setLobbyMessage("Einladungslink in die Zwischenablage kopiert.", "success");
     setTimeout(() => {
       btn.classList.remove("copied");
       btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Kopieren`;
@@ -1209,10 +1432,13 @@ function bindUiEvents() {
 
   ui.elements.copyCodeBtn.addEventListener("click",   copyJoinCode);
   ui.elements.leaveLobbyBtn.addEventListener("click", handleLeaveLobby);
+  ui.elements.readyToggleBtn.addEventListener("click", handleToggleReady);
   ui.elements.startGameBtn.addEventListener("click",  handleStartGame);
 
   ui.elements.rack.addEventListener("click", handleRackClick);
   ui.elements.boardGrid.addEventListener("click", handleBoardClick);
+  ui.elements.boardGrid.addEventListener("click", handleBoardFocusFromPointer);
+  ui.elements.boardGrid.addEventListener("keydown", handleBoardKeydown);
 
   ui.elements.commitMoveBtn.addEventListener("click",      handleCommitMove);
   ui.elements.undoPlacementBtn.addEventListener("click",   undoLastPlacement);
@@ -1220,6 +1446,7 @@ function bindUiEvents() {
   ui.elements.exchangeModeBtn.addEventListener("click",    toggleExchangeMode);
   ui.elements.exchangeSelectedBtn.addEventListener("click", handleExchangeSelected);
   ui.elements.passTurnBtn.addEventListener("click",        handlePassTurn);
+  ui.elements.skipOfflineBtn.addEventListener("click",     handleSkipOffline);
   ui.elements.devDeleteGameBtn.addEventListener("click",   handleDevDeleteGame);
   ui.elements.zoomOutBtn.addEventListener("click",         handleZoomOut);
   ui.elements.zoomInBtn.addEventListener("click",          handleZoomIn);
@@ -1254,10 +1481,19 @@ function applyLoadedDisplayName() {
   if (stored) ui.elements.displayNameInput.value = stored;
 }
 
+function applyJoinCodeFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const joinCode = sanitizeJoinCode(params.get("join"));
+  if (!joinCode) return false;
+  ui.elements.joinCodeInput.value = joinCode;
+  return true;
+}
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 
 export async function startApp() {
   bindUiEvents();
+  applyDevUiVisibility();
   applyLoadedDisplayName();
 
   // Disable inputs while Firebase initialises
@@ -1290,7 +1526,12 @@ export async function startApp() {
 
   const resumed = await tryResumeSession();
   if (!resumed) {
-    openLanding("Erstelle ein neues Spiel oder tritt mit einem Code bei.");
+    const hasJoinCode = applyJoinCodeFromUrl();
+    openLanding(
+      hasJoinCode
+        ? "Einladungslink erkannt. Gib deinen Namen ein und tritt bei."
+        : "Erstelle ein neues Spiel oder tritt mit einem Code bei."
+    );
   }
 
   refreshBoardZoomStyles();
