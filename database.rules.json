@@ -1,0 +1,60 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "games": {
+      "$code": {
+        ".read": "auth != null && (data.child('players').child(auth.uid).exists() || data.child('meta').child('status').val() == 'lobby')",
+        ".write": "auth != null && ((!data.exists() && newData.child('players').child(auth.uid).exists() && newData.child('meta').child('hostUid').val() == auth.uid) || (data.exists() && data.child('meta').child('status').val() != 'finished' && (data.child('players').child(auth.uid).exists() || (data.child('meta').child('status').val() == 'lobby' && !data.child('players').child(auth.uid).exists() && newData.child('players').child(auth.uid).exists() && newData.child('meta').child('status').val() == 'lobby')) && (data.child('meta').child('status').val() != 'lobby' || newData.child('meta').child('status').val() != 'in_progress' || data.child('meta').child('hostUid').val() == auth.uid)))",
+        "meta": {
+          "joinCode": {
+            ".validate": "newData.isString() && newData.val().matches(/^[A-Z0-9]{4,8}$/)"
+          },
+          "status": {
+            ".validate": "newData.val() == 'lobby' || newData.val() == 'in_progress' || newData.val() == 'finished'"
+          },
+          "hostUid": {
+            ".validate": "newData.isString() && newData.val().length > 0"
+          },
+          "revision": {
+            ".validate": "newData.isNumber() && newData.val() >= 1"
+          },
+          "$other": {
+            ".validate": true
+          }
+        },
+        "players": {
+          ".validate": "newData.childrenCount() <= 4",
+          "$uid": {
+            ".read": "auth != null && (root.child('games/' + $code + '/players/' + auth.uid).exists() || root.child('games/' + $code + '/meta/status').val() == 'lobby')",
+            ".write": "auth != null && (auth.uid == $uid || root.child('games/' + $code + '/meta/hostUid').val() == auth.uid)",
+            "uid": {
+              ".validate": "newData.val() == $uid"
+            },
+            "name": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 24"
+            },
+            "joinedAt": {
+              ".validate": "newData.isNumber()"
+            },
+            "connected": {
+              ".validate": "newData.isBoolean()"
+            },
+            "isHost": {
+              ".validate": "newData.isBoolean()"
+            },
+            "$other": {
+              ".validate": true
+            }
+          }
+        },
+        "game": {
+          ".validate": "newData.hasChildren(['board', 'bag', 'racks', 'scores', 'turnOrder', 'currentPlayerUid']) || !newData.exists()",
+          "$other": {
+            ".validate": true
+          }
+        }
+      }
+    }
+  }
+}

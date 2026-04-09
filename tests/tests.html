@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Qwirkle Rules Tests</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 1rem;
+        font-family: "Segoe UI", sans-serif;
+        background: #f4f7fb;
+        color: #1e2b3d;
+      }
+      .card {
+        max-width: 900px;
+        margin: 0 auto;
+        background: #fff;
+        border: 1px solid #d5deec;
+        border-radius: 12px;
+        padding: 1rem;
+      }
+      ul {
+        padding-left: 1.2rem;
+      }
+      li {
+        margin-bottom: 0.55rem;
+      }
+      .ok {
+        color: #226d4c;
+      }
+      .fail {
+        color: #8f1f2d;
+      }
+      code {
+        background: #eef2f9;
+        border: 1px solid #dae5f6;
+        padding: 0.1rem 0.35rem;
+        border-radius: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Qwirkle Rules Test Harness</h1>
+      <p>Open this page directly in a browser. No dependencies required.</p>
+      <p id="summary">Running...</p>
+      <ul id="test-output"></ul>
+    </div>
+
+    <script type="module" src="./rules.test.js"></script>
+  </body>
+</html>

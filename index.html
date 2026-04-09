@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Qwirkle Go</title>
+    <meta
+      name="description"
+      content="Realtime multiplayer Qwirkle in the browser using Firebase Realtime Database."
+    />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <header class="top-header">
+        <div>
+          <h1>Qwirkle Go</h1>
+          <p class="subtitle">Live multiplayer Qwirkle for honest casual play</p>
+        </div>
+        <div id="connection-pill" class="pill neutral">Booting...</div>
+      </header>
+
+      <main>
+        <section id="setup-screen" class="screen hidden" aria-live="polite">
+          <div class="card narrow">
+            <h2>Firebase Setup Required</h2>
+            <p>
+              This app needs Firebase config before it can connect to multiplayer services.
+            </p>
+            <ol>
+              <li>Copy <code>src/firebase-config.example.js</code> to <code>src/firebase-config.js</code>.</li>
+              <li>Paste your Firebase Web App config values.</li>
+              <li>Enable Anonymous Authentication in Firebase Auth.</li>
+              <li>Create a Realtime Database and apply <code>database.rules.json</code>.</li>
+              <li>Reload or redeploy after saving config.</li>
+            </ol>
+            <p class="muted">
+              If this is deployed on Vercel, commit <code>src/firebase-config.js</code> with your project values.
+            </p>
+          </div>
+        </section>
+
+        <section id="landing-screen" class="screen hidden" aria-live="polite">
+          <div class="card narrow">
+            <h2>Start or Join a Match</h2>
+            <label for="display-name-input">Display Name</label>
+            <input
+              id="display-name-input"
+              type="text"
+              maxlength="24"
+              autocomplete="nickname"
+              placeholder="Your name"
+            />
+
+            <div class="grid-two">
+              <button id="create-game-btn" class="primary">Create New Game</button>
+              <button id="join-game-btn" class="secondary">Join Game</button>
+            </div>
+
+            <label for="join-code-input">Join Code</label>
+            <input
+              id="join-code-input"
+              type="text"
+              maxlength="8"
+              placeholder="ABCDE"
+              autocapitalize="characters"
+              autocomplete="off"
+            />
+
+            <p id="landing-message" class="message" aria-live="polite"></p>
+            <p class="muted tiny">
+              Unofficial fan-made implementation. Qwirkle is a registered trademark of MindWare.
+            </p>
+          </div>
+        </section>
+
+        <section id="lobby-screen" class="screen hidden" aria-live="polite">
+          <div class="card">
+            <div class="lobby-head">
+              <div>
+                <h2>Lobby <span id="lobby-code" class="code-pill">-----</span></h2>
+                <p id="lobby-count" class="muted">0 / 4 players</p>
+              </div>
+              <div class="lobby-actions">
+                <button id="copy-code-btn" class="secondary">Copy Code</button>
+                <button id="leave-lobby-btn" class="danger">Leave Lobby</button>
+              </div>
+            </div>
+
+            <ul id="lobby-players" class="player-list"></ul>
+
+            <div class="row-end">
+              <button id="start-game-btn" class="primary">Start Game Now</button>
+            </div>
+
+            <p id="lobby-message" class="message" aria-live="polite"></p>
+          </div>
+        </section>
+
+        <section id="game-screen" class="screen hidden" aria-live="polite">
+          <div class="game-layout">
+            <aside class="side-panel card">
+              <div class="game-meta">
+                <p><strong>Code:</strong> <span id="game-code">-----</span></p>
+                <p><strong>Bag:</strong> <span id="bag-count">0</span></p>
+                <p><strong>Turn:</strong> <span id="turn-indicator">-</span></p>
+                <p><strong>Status:</strong> <span id="game-status">-</span></p>
+              </div>
+
+              <h3>Scoreboard</h3>
+              <ul id="scoreboard" class="score-list"></ul>
+
+              <h3>Move Actions</h3>
+              <div class="action-grid">
+                <button id="commit-move-btn" class="primary">Commit Move</button>
+                <button id="undo-placement-btn" class="secondary">Undo Last Placement</button>
+                <button id="cancel-turn-btn" class="secondary">Cancel Turn</button>
+                <button id="exchange-mode-btn" class="secondary">Exchange Mode: Off</button>
+                <button id="exchange-selected-btn" class="secondary">Exchange Selected</button>
+                <button id="pass-turn-btn" class="danger">Pass Turn</button>
+              </div>
+
+              <p id="game-message" class="message" aria-live="polite"></p>
+            </aside>
+
+            <section class="board-panel card">
+              <h3>Board</h3>
+              <p class="muted tiny">Select a rack tile, then click an empty board cell to place it tentatively.</p>
+              <div id="board-scroll" class="board-scroll">
+                <div id="board-grid" class="board-grid" role="grid" aria-label="Qwirkle board"></div>
+              </div>
+            </section>
+          </div>
+
+          <section class="card">
+            <h3>Your Rack</h3>
+            <p class="muted tiny">
+              Normal mode: click one tile to place. Exchange mode: click one or more tiles to mark for exchange.
+            </p>
+            <div id="rack" class="rack" aria-label="Player rack"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <template id="result-dialog-template">
+      <div class="result-overlay" role="dialog" aria-modal="true">
+        <div class="card narrow">
+          <h2>Game Over</h2>
+          <p id="result-winner-line"></p>
+          <ol id="result-standings"></ol>
+          <div class="row-end">
+            <button id="result-close-btn" class="primary">Back To Landing</button>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
