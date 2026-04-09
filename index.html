@@ -1,170 +1,250 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Qwirkle Go</title>
-    <meta
-      name="description"
-      content="Qwirkle als Live-Mehrspieler im Browser mit Firebase Realtime Database."
-    />
+    <meta name="description" content="Qwirkle als Live-Mehrspieler im Browser mit Firebase Realtime Database." />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <div id="app" class="app-shell">
+
+      <div id="connection-pill" class="connection-pill pill neutral">Wird gestartet…</div>
+
       <header id="top-header" class="top-header">
-        <div>
-          <h1>Qwirkle Go</h1>
-        </div>
-        <div id="connection-pill" class="pill neutral">Wird gestartet...</div>
+        <h1 class="brand-wordmark">Qwirkle <span class="brand-go">Go</span></h1>
       </header>
 
-      <main>
+      <main class="main-content">
+
+        <!-- ── Setup screen ── -->
         <section id="setup-screen" class="screen hidden" aria-live="polite">
-          <div class="card narrow">
+          <div class="center-card card">
             <h2>Firebase-Setup erforderlich</h2>
-            <p>
-              Diese App benötigt eine Firebase-Konfiguration, bevor der Mehrspieler-Modus genutzt werden kann.
-            </p>
+            <p>Diese App benötigt eine Firebase-Konfiguration für den Mehrspieler-Modus.</p>
             <ol>
-              <li>Kopiere <code>src/firebase-config.example.js</code> nach <code>src/firebase-config.js</code>.</li>
-              <li>Trage deine Firebase-Web-App-Konfigurationswerte ein.</li>
+              <li>Kopiere <code>src/firebase-config.example.js</code> → <code>src/firebase-config.js</code></li>
+              <li>Trage deine Firebase-Web-App-Konfiguration ein.</li>
               <li>Aktiviere anonyme Authentifizierung in Firebase Auth.</li>
               <li>Erstelle eine Realtime Database und wende <code>database.rules.json</code> an.</li>
-              <li>Lade die App neu oder deploye erneut.</li>
+              <li>Lade die App neu.</li>
             </ol>
-            <p class="muted">
-              Bei Deployment auf Vercel: Committe <code>src/firebase-config.js</code> mit den Werten deines Projekts.
-            </p>
           </div>
         </section>
 
+        <!-- ── Landing screen ── -->
         <section id="landing-screen" class="screen hidden" aria-live="polite">
-          <div class="card narrow">
-            <h2>Spiel starten oder beitreten</h2>
-            <label for="display-name-input">Anzeigename</label>
-            <input
-              id="display-name-input"
-              type="text"
-              maxlength="24"
-              autocomplete="nickname"
-              placeholder="Dein Name"
-            />
-
-            <div class="grid-two">
-              <button id="create-game-btn" class="primary">Neues Spiel erstellen</button>
-              <button id="join-game-btn" class="secondary">Spiel beitreten</button>
-            </div>
-
-            <label for="join-code-input">Beitrittscode</label>
-            <input
-              id="join-code-input"
-              type="text"
-              maxlength="8"
-              placeholder="ABCDE"
-              autocapitalize="characters"
-              autocomplete="off"
-            />
-
-            <p id="landing-message" class="message" aria-live="polite"></p>
-          </div>
-        </section>
-
-        <section id="lobby-screen" class="screen hidden" aria-live="polite">
-          <div class="card">
-            <div class="lobby-head">
-              <div>
-                <h2>Lobby <span id="lobby-code" class="code-pill">-----</span></h2>
-                <p id="lobby-count" class="muted">0 / 4 Spieler</p>
+          <div class="landing-wrap">
+            <div class="landing-hero">
+              <div class="hero-tiles" aria-hidden="true">
+                <div class="hero-tile ht-red"></div>
+                <div class="hero-tile ht-blue"></div>
+                <div class="hero-tile ht-yellow"></div>
+                <div class="hero-tile ht-green"></div>
+                <div class="hero-tile ht-purple"></div>
+                <div class="hero-tile ht-orange"></div>
               </div>
-              <div class="lobby-actions">
-                <button id="copy-code-btn" class="secondary">Code kopieren</button>
-                <button id="leave-lobby-btn" class="danger">Lobby verlassen</button>
+              <h1 class="hero-title">Qwirkle Go</h1>
+              <p class="hero-sub">Das Legespiel · Live im Browser</p>
+            </div>
+
+            <div class="landing-card card">
+              <div class="name-field">
+                <label for="display-name-input">Dein Anzeigename</label>
+                <input
+                  id="display-name-input"
+                  type="text"
+                  maxlength="24"
+                  autocomplete="nickname"
+                  placeholder="Wie heißt du?"
+                />
               </div>
-            </div>
 
-            <ul id="lobby-players" class="player-list"></ul>
-
-            <div class="row-end">
-              <button id="start-game-btn" class="primary">Spiel jetzt starten</button>
-            </div>
-
-            <p id="lobby-message" class="message" aria-live="polite"></p>
-          </div>
-        </section>
-
-        <section id="game-screen" class="screen hidden" aria-live="polite">
-          <section class="card">
-            <div class="rack-title-row">
-              <h3>Deine Steine</h3>
-              <button
-                id="rack-help-toggle-btn"
-                type="button"
-                class="help-icon-btn"
-                aria-label="Hilfe zu deinen Steinen anzeigen"
-                aria-expanded="false"
-              >
-                ?
+              <button id="create-game-btn" class="btn btn-primary btn-lg">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Neues Spiel erstellen
               </button>
+
+              <div class="divider"><span>oder mit Code beitreten</span></div>
+
+              <div class="join-row">
+                <input
+                  id="join-code-input"
+                  type="text"
+                  maxlength="8"
+                  placeholder="ABCDE"
+                  autocapitalize="characters"
+                  autocomplete="off"
+                  class="join-code-input"
+                />
+                <button id="join-game-btn" class="btn btn-secondary">Beitreten</button>
+              </div>
+
+              <p id="landing-message" class="message" aria-live="polite"></p>
             </div>
-            <p id="rack-help-text" class="muted tiny hidden">
-              Normalmodus: Klicke ein Teil zum Platzieren. Tauschmodus: Markiere ein oder mehrere Teile zum Tauschen.
-            </p>
-            <div id="rack" class="rack" aria-label="Ablageständer des Spielers"></div>
-          </section>
+          </div>
+        </section>
 
-          <div class="game-layout">
-            <aside class="side-panel card">
-              <div class="game-meta">
-                <p><strong>Code:</strong> <span id="game-code">-----</span></p>
-                <p><strong>Beutel:</strong> <span id="bag-count">0</span></p>
-                <p><strong>Zug:</strong> <span id="turn-indicator">-</span></p>
-                <p><strong>Status:</strong> <span id="game-status">-</span></p>
+        <!-- ── Lobby screen ── -->
+        <section id="lobby-screen" class="screen hidden" aria-live="polite">
+          <div class="lobby-card card">
+
+            <div class="lobby-header">
+              <div>
+                <h2 class="lobby-title">Spielraum</h2>
+                <p class="lobby-hint">Teile den Code mit anderen Spielern</p>
               </div>
+              <button id="leave-lobby-btn" class="btn btn-ghost btn-sm">Verlassen</button>
+            </div>
 
-              <h3>Punktestand</h3>
+            <div class="code-display-box">
+              <span class="code-display-label">Beitrittscode</span>
+              <div class="code-display-row">
+                <span id="lobby-code" class="code-display-value">-----</span>
+                <button id="copy-code-btn" class="copy-btn" title="Code kopieren">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                  Kopieren
+                </button>
+              </div>
+            </div>
+
+            <div class="player-section">
+              <div class="player-section-head">
+                <span id="lobby-count" class="player-count-badge">0 / 4</span>
+                <span class="player-count-label">Spieler · 2–4 zum Starten</span>
+              </div>
+              <ul id="lobby-players" class="player-list"></ul>
+            </div>
+
+            <div class="lobby-footer">
+              <p id="lobby-message" class="message" aria-live="polite"></p>
+              <button id="start-game-btn" class="btn btn-primary btn-lg">Spiel starten</button>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ── Game screen ── -->
+        <section id="game-screen" class="screen hidden" aria-live="polite">
+
+          <!-- Top bar -->
+          <div class="game-topbar">
+            <div class="topbar-meta">
+              <span class="meta-chip">
+                <span class="meta-chip-label">Spiel</span>
+                <span id="game-code" class="meta-chip-value">-----</span>
+              </span>
+              <span class="meta-chip">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" class="meta-chip-icon"><path d="M20 7H4C2.9 7 2 7.9 2 9v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm-9 8H7v-2h4v2zm6 0h-4v-2h4v2zm1-5H6V9h12v1z"/></svg>
+                <span id="bag-count" class="meta-chip-value">0</span>
+              </span>
+            </div>
+            <div class="topbar-turn">
+              <span class="turn-label">Am Zug:</span>
+              <strong id="turn-indicator" class="turn-name">–</strong>
+            </div>
+            <div class="topbar-right">
+              <span id="game-status" class="game-status-badge"></span>
+            </div>
+          </div>
+
+          <!-- Main game area -->
+          <div class="game-body">
+
+            <!-- Score sidebar -->
+            <aside class="scores-sidebar">
+              <h3 class="sidebar-title">Punkte</h3>
               <ul id="scoreboard" class="score-list"></ul>
-
-              <h3>Zug-Aktionen</h3>
-              <div class="action-grid">
-                <button id="commit-move-btn" class="primary">Zug bestätigen</button>
-                <button id="undo-placement-btn" class="secondary">Letzte Platzierung rückgängig</button>
-                <button id="cancel-turn-btn" class="secondary">Zug abbrechen</button>
-                <button id="exchange-mode-btn" class="secondary">Tauschmodus: Aus</button>
-                <button id="exchange-selected-btn" class="secondary">Ausgewählte tauschen</button>
-                <button id="pass-turn-btn" class="danger">Passen</button>
-                <button id="dev-delete-game-btn" class="danger">Dev: Spiel löschen</button>
-              </div>
-
-              <p id="game-message" class="message" aria-live="polite"></p>
             </aside>
 
-            <section class="board-panel card">
-              <h3>Spielfeld</h3>
-              <p class="muted tiny">Wähle ein Teil aus dem Ablageständer und klicke auf ein leeres Feld.</p>
+            <!-- Board -->
+            <div class="board-area">
               <div id="board-scroll" class="board-scroll">
                 <div id="board-grid" class="board-grid" role="grid" aria-label="Qwirkle Spielfeld"></div>
               </div>
-            </section>
+            </div>
+
           </div>
+
+          <!-- Player dock: rack + actions -->
+          <div class="player-dock">
+
+            <div class="rack-wrap">
+              <div class="rack-header-row">
+                <span class="rack-title">Deine Steine</span>
+                <button
+                  id="rack-help-toggle-btn"
+                  type="button"
+                  class="help-icon-btn"
+                  aria-label="Hilfe anzeigen"
+                  aria-expanded="false"
+                >?</button>
+              </div>
+              <p id="rack-help-text" class="rack-help-text hidden">
+                Ziehe Steine auf das Spielfeld — oder klicke erst einen Stein, dann ein leeres Feld. Im Tauschmodus Steine antippen zum Markieren.
+              </p>
+              <div id="rack" class="rack" aria-label="Deine Spielsteine"></div>
+            </div>
+
+            <div class="action-bar">
+              <button id="commit-move-btn" class="btn btn-commit">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Zug bestätigen
+              </button>
+              <div class="action-group">
+                <button id="undo-placement-btn" class="btn btn-ghost-sm" title="Letzte Platzierung rückgängig">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+                  Rückgängig
+                </button>
+                <button id="cancel-turn-btn" class="btn btn-ghost-sm">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  Abbrechen
+                </button>
+              </div>
+              <div class="action-group action-group-sep">
+                <button id="exchange-mode-btn" class="btn btn-ghost-sm">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+                  Tauschen
+                </button>
+                <button id="exchange-selected-btn" class="btn btn-ghost-sm btn-confirm">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Tausch OK
+                </button>
+                <button id="pass-turn-btn" class="btn btn-danger-sm">Passen</button>
+              </div>
+            </div>
+
+            <p id="game-message" class="game-message" aria-live="polite"></p>
+
+          </div>
+
+          <button id="dev-delete-game-btn" class="dev-btn">Dev: Spiel löschen</button>
+
         </section>
+
       </main>
 
       <footer id="legal-note" class="legal-note">
-        Inoffizielle Fan-Implementierung. Qwirkle ist eine eingetragene Marke von MindWare.
+        Inoffizielle Fan-Implementierung · Qwirkle® ist eine eingetragene Marke von MindWare
       </footer>
     </div>
 
+    <!-- Floating drag ghost (portal, outside app-shell) -->
+    <div id="drag-ghost" class="drag-ghost" aria-hidden="true"></div>
+
     <template id="result-dialog-template">
-      <div class="result-overlay" role="dialog" aria-modal="true">
-        <div class="card narrow">
-          <h2>Spiel beendet</h2>
-          <p id="result-winner-line"></p>
-          <ol id="result-standings"></ol>
-          <div class="row-end">
-            <button id="result-close-btn" class="primary">Zurück zur Startseite</button>
-          </div>
+      <div class="result-overlay" role="dialog" aria-modal="true" aria-labelledby="result-heading">
+        <div class="result-card card">
+          <div class="result-icon" aria-hidden="true">🏆</div>
+          <h2 id="result-heading">Spiel beendet!</h2>
+          <p id="result-winner-line" class="result-winner"></p>
+          <ol id="result-standings" class="result-standings"></ol>
+          <button id="result-close-btn" class="btn btn-primary btn-lg">Zurück zur Startseite</button>
         </div>
       </div>
     </template>

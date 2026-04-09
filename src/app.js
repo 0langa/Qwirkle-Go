@@ -16,6 +16,7 @@ import {
   renderLobbyPlayers,
   renderRack,
   renderScoreboard,
+  renderTileHtml,
 } from "./renderer.js";
 import {
   clearExchangeSelection,
@@ -50,10 +51,17 @@ let actionBusy = false;
 let finishedRevisionShown = null;
 let presenceCode = null;
 
+// ─── Drag state ─────────────────────────────────────────────────────────────
+let dragState = null;
+
+// ─── Busy ────────────────────────────────────────────────────────────────────
+
 function setBusy(value) {
   actionBusy = Boolean(value);
   updateActionButtonState();
 }
+
+// ─── Error messages ──────────────────────────────────────────────────────────
 
 function toCode(error) {
   return String(error?.code || "").toLowerCase();
@@ -61,45 +69,21 @@ function toCode(error) {
 
 function toUiErrorMessage(error) {
   const code = toCode(error);
-
-  if (code === "game-not-found") {
-    return "Spiel nicht gefunden. Bitte prüfe den Beitrittscode und versuche es erneut.";
-  }
-  if (code === "auth-not-ready") {
-    return "Authentifizierung wird noch initialisiert. Bitte kurz warten und erneut versuchen.";
-  }
-  if (code === "permission-denied") {
-    return "Zugriff durch Firebase-Regeln verweigert. Prüfe Authentifizierung und Datenbankregeln.";
-  }
-  if (code === "invalid-lobby-data") {
-    return "Lobby-Daten sind ungültig. Bitte den Host, ein neues Spiel zu erstellen.";
-  }
-  if (code === "network-error") {
-    return "Netzwerk-/Datenbankfehler beim Zugriff auf Firebase. Bitte erneut versuchen.";
-  }
-  if (code === "firebase-error") {
-    return "Unerwarteter Firebase-Fehler. Prüfe Konsole und Datenbank-Setup.";
-  }
-  if (code === "invalid-join-code") {
-    return "Bitte einen gültigen Beitrittscode eingeben.";
-  }
-  if (code === "game-already-started") {
-    return "Dieses Spiel wurde bereits gestartet.";
-  }
-  if (code === "game-finished") {
-    return "Dieses Spiel ist bereits beendet.";
-  }
-  if (code === "lobby-full") {
-    return "Die Lobby ist voll (4 Spieler).";
-  }
-
+  if (code === "game-not-found")      return "Spiel nicht gefunden. Bitte prüfe den Beitrittscode.";
+  if (code === "auth-not-ready")      return "Authentifizierung läuft noch. Kurz warten und erneut versuchen.";
+  if (code === "permission-denied")   return "Zugriff verweigert. Prüfe Authentifizierung und Datenbankregeln.";
+  if (code === "invalid-lobby-data")  return "Lobby-Daten ungültig. Bitte den Host, ein neues Spiel zu erstellen.";
+  if (code === "network-error")       return "Netzwerkfehler. Bitte erneut versuchen.";
+  if (code === "firebase-error")      return "Firebase-Fehler. Prüfe die Konsole.";
+  if (code === "invalid-join-code")   return "Bitte einen gültigen Beitrittscode eingeben.";
+  if (code === "game-already-started") return "Dieses Spiel wurde bereits gestartet.";
+  if (code === "game-finished")       return "Dieses Spiel ist bereits beendet.";
+  if (code === "lobby-full")          return "Die Lobby ist voll (max. 4 Spieler).";
   return error?.message || "Unerwarteter Fehler.";
 }
 
 async function ensureActionAuthUid() {
-  if (authUid) {
-    return authUid;
-  }
+  if (authUid) return authUid;
   const user = await ensureAuthReady();
   authUid = user?.uid || null;
   if (!authUid) {
@@ -110,19 +94,22 @@ async function ensureActionAuthUid() {
   return authUid;
 }
 
+// ─── State helpers ───────────────────────────────────────────────────────────
+
 function currentSnapshot() {
   return getState().gameSnapshot;
 }
 
 function myRack() {
-  const snapshot = currentSnapshot();
-  return snapshot?.game?.racks?.[authUid] || [];
+  return currentSnapshot()?.game?.racks?.[authUid] || [];
 }
 
 function myTurn() {
   const snapshot = currentSnapshot();
   return snapshot?.meta?.status === "in_progress" && snapshot?.game?.currentPlayerUid === authUid;
 }
+
+// ─── Messages ────────────────────────────────────────────────────────────────
 
 function setLandingMessage(text, tone = "") {
   ui.setMessage(ui.elements.landingMessage, text, tone);
@@ -142,15 +129,15 @@ function clearMessages() {
   setGameMessage("");
 }
 
+// ─── Screen navigation ───────────────────────────────────────────────────────
+
 function openLanding(message = "", tone = "") {
   patchState({ gameSnapshot: null, activeCode: null, boardHasCentered: false });
   resetTurnDraft();
   finishedRevisionShown = null;
   ui.hideResultDialog();
   ui.showScreen("landing-screen");
-  if (message) {
-    setLandingMessage(message, tone);
-  }
+  if (message) setLandingMessage(message, tone);
 }
 
 function dropGameSubscription() {
@@ -165,64 +152,87 @@ function dropGameSubscription() {
 
 function centerBoardIfNeeded() {
   const state = getState();
-  if (state.boardHasCentered) {
-    return;
-  }
-
+  if (state.boardHasCentered) return;
   const scroller = ui.elements.boardScroll;
   scroller.scrollLeft = (scroller.scrollWidth - scroller.clientWidth) / 2;
-  scroller.scrollTop = (scroller.scrollHeight - scroller.clientHeight) / 2;
+  scroller.scrollTop  = (scroller.scrollHeight - scroller.clientHeight) / 2;
   patchState({ boardHasCentered: true });
 }
+
+// ─── Action button state ─────────────────────────────────────────────────────
 
 function updateActionButtonState() {
   const snapshot = currentSnapshot();
   const state = getState();
-  const inProgress = snapshot?.meta?.status === "in_progress";
-  const isMyTurn = myTurn();
-  const hasTentative = state.tentativePlacements.length > 0;
-  const hasExchangeSelection = state.exchangeSelection.size > 0;
+  const inProgress       = snapshot?.meta?.status === "in_progress";
+  const isMyTurn         = myTurn();
+  const hasTentative     = state.tentativePlacements.length > 0;
+  const hasExchangeSel   = state.exchangeSelection.size > 0;
 
-  ui.elements.commitMoveBtn.disabled = actionBusy || !inProgress || !isMyTurn || state.exchangeMode || !hasTentative;
-  ui.elements.undoPlacementBtn.disabled = actionBusy || !inProgress || !isMyTurn || state.exchangeMode || !hasTentative;
-  ui.elements.cancelTurnBtn.disabled = actionBusy || !inProgress || !isMyTurn || (!hasTentative && !state.exchangeSelection.size && !state.selectedRackTileId);
-  ui.elements.exchangeModeBtn.disabled = actionBusy || !inProgress || !isMyTurn || hasTentative;
+  ui.elements.commitMoveBtn.disabled =
+    actionBusy || !inProgress || !isMyTurn || state.exchangeMode || !hasTentative;
+  ui.elements.undoPlacementBtn.disabled =
+    actionBusy || !inProgress || !isMyTurn || state.exchangeMode || !hasTentative;
+  ui.elements.cancelTurnBtn.disabled =
+    actionBusy || !inProgress || !isMyTurn ||
+    (!hasTentative && !state.exchangeSelection.size && !state.selectedRackTileId);
+  ui.elements.exchangeModeBtn.disabled =
+    actionBusy || !inProgress || !isMyTurn || hasTentative;
   ui.elements.exchangeSelectedBtn.disabled =
-    actionBusy || !inProgress || !isMyTurn || !state.exchangeMode || !hasExchangeSelection;
-  ui.elements.passTurnBtn.disabled = actionBusy || !inProgress || !isMyTurn || hasTentative;
+    actionBusy || !inProgress || !isMyTurn || !state.exchangeMode || !hasExchangeSel;
+  ui.elements.passTurnBtn.disabled =
+    actionBusy || !inProgress || !isMyTurn || hasTentative;
   ui.elements.devDeleteGameBtn.disabled = actionBusy || !activeCode;
 
-  ui.elements.exchangeModeBtn.textContent = `Tauschmodus: ${state.exchangeMode ? "An" : "Aus"}`;
+  // Visual feedback: exchange mode toggle
+  const exchangeBtn = ui.elements.exchangeModeBtn;
+  if (state.exchangeMode) {
+    exchangeBtn.classList.add("btn-confirm");
+    exchangeBtn.title = "Tauschmodus deaktivieren";
+  } else {
+    exchangeBtn.classList.remove("btn-confirm");
+    exchangeBtn.title = "Tauschmodus aktivieren";
+  }
+
+  // Status badge
+  const badge = ui.elements.gameStatus;
+  if (!inProgress) {
+    badge.textContent = snapshot?.meta?.status === "finished" ? "Beendet" : "–";
+    badge.classList.remove("my-turn");
+  } else if (isMyTurn) {
+    badge.textContent = "Du bist dran!";
+    badge.classList.add("my-turn");
+  } else {
+    const currentName = snapshot?.players?.[snapshot?.game?.currentPlayerUid]?.name || "–";
+    badge.textContent = `${currentName} ist dran`;
+    badge.classList.remove("my-turn");
+  }
 }
+
+// ─── Render helpers ──────────────────────────────────────────────────────────
 
 function refreshCurrentGameView() {
   const snapshot = currentSnapshot();
-  if (!snapshot) {
-    updateActionButtonState();
-    return;
-  }
-  if (snapshot.meta?.status === "lobby") {
-    renderLobby(snapshot);
-    return;
-  }
+  if (!snapshot) { updateActionButtonState(); return; }
+  if (snapshot.meta?.status === "lobby") { renderLobby(snapshot); return; }
   renderGame(snapshot);
 }
 
 function renderLobby(snapshot) {
-  const meta = snapshot.meta || {};
+  const meta    = snapshot.meta || {};
   const players = snapshot.players || {};
-  const playerCount = Object.keys(players).length;
-  const me = players[authUid];
+  const count   = Object.keys(players).length;
+  const me      = players[authUid];
 
-  ui.elements.lobbyCode.textContent = meta.joinCode || "-----";
-  ui.elements.lobbyCount.textContent = `${playerCount} / 4 Spieler`;
+  ui.elements.lobbyCode.textContent  = meta.joinCode || "-----";
+  ui.elements.lobbyCount.textContent = `${count} / 4`;
   renderLobbyPlayers(ui.elements.lobbyPlayers, players, authUid);
 
-  const host = meta.hostUid === authUid;
-  ui.elements.startGameBtn.disabled = !host || playerCount < 2 || playerCount > 4 || actionBusy;
-  ui.elements.startGameBtn.title = host
-    ? "Starten, wenn 2-4 Spieler anwesend sind"
-    : "Nur der Host kann starten";
+  const isHost = meta.hostUid === authUid;
+  ui.elements.startGameBtn.disabled = !isHost || count < 2 || count > 4 || actionBusy;
+  ui.elements.startGameBtn.title    = isHost
+    ? "Starten, wenn 2–4 Spieler bereit sind"
+    : "Nur der Host kann das Spiel starten";
 
   if (!me) {
     openLanding("Du bist nicht mehr in dieser Lobby.", "error");
@@ -230,25 +240,26 @@ function renderLobby(snapshot) {
   }
 
   ui.showScreen("lobby-screen");
-  setLobbyMessage(host ? "Du bist Host. Starte, wenn alle bereit sind." : "Warte auf den Host zum Starten.");
+  setLobbyMessage(
+    isHost
+      ? "Du bist Host. Starte, wenn alle bereit sind."
+      : "Warte auf den Host."
+  );
 }
 
 function clearDraftIfOutdated(snapshot) {
-  const rack = snapshot?.game?.racks?.[authUid] || [];
-  const rackIds = new Set(rack.map((tile) => tile.id));
-  const state = getState();
-
-  const placementsValid = state.tentativePlacements.every((placement) => rackIds.has(placement.tile.id));
-  if (!placementsValid || !myTurn()) {
-    resetTurnDraft();
-  }
+  const rack    = snapshot?.game?.racks?.[authUid] || [];
+  const rackIds = new Set(rack.map((t) => t.id));
+  const state   = getState();
+  const valid   = state.tentativePlacements.every((p) => rackIds.has(p.tile.id));
+  if (!valid || !myTurn()) resetTurnDraft();
 }
 
 function renderGame(snapshot) {
-  const meta = snapshot.meta || {};
-  const game = snapshot.game || {};
+  const meta    = snapshot.meta || {};
+  const game    = snapshot.game || {};
   const players = snapshot.players || {};
-  const rack = game.racks?.[authUid] || [];
+  const rack    = game.racks?.[authUid] || [];
   const isMyTurn = myTurn();
 
   clearDraftIfOutdated(snapshot);
@@ -256,9 +267,8 @@ function renderGame(snapshot) {
 
   ui.elements.gameCode.textContent = meta.joinCode || "-----";
   ui.elements.bagCount.textContent = String((game.bag || []).length);
-  ui.elements.turnIndicator.textContent = players?.[game.currentPlayerUid]?.name || "-";
-  ui.elements.gameStatus.textContent =
-    meta.status === "finished" ? "Beendet" : isMyTurn ? "Du bist dran" : "Warten";
+  ui.elements.turnIndicator.textContent =
+    players?.[game.currentPlayerUid]?.name || "–";
 
   renderScoreboard(
     ui.elements.scoreboard,
@@ -270,9 +280,9 @@ function renderGame(snapshot) {
   );
 
   renderBoardGrid(ui.elements.boardGrid, {
-    boardMap: game.board || {},
+    boardMap:            game.board || {},
     tentativePlacements: state.tentativePlacements,
-    interactive: isMyTurn,
+    interactive:         isMyTurn,
   });
 
   renderRack(
@@ -284,7 +294,11 @@ function renderGame(snapshot) {
   );
 
   if (meta.status === "in_progress") {
-    setGameMessage(isMyTurn ? "Du bist dran: Teile legen, tauschen oder passen." : "Warte auf den aktuellen Spieler.");
+    setGameMessage(
+      isMyTurn
+        ? "Du bist dran: Steine legen, tauschen oder passen."
+        : "Warte auf den anderen Spieler…"
+    );
   }
 
   ui.showScreen("game-screen");
@@ -293,11 +307,15 @@ function renderGame(snapshot) {
   if (meta.status === "finished") {
     if (finishedRevisionShown !== meta.revision) {
       finishedRevisionShown = meta.revision;
-      const summary = buildResultSummary(players, game.finalStandings || [], game.winnerUids || []);
+      const summary = buildResultSummary(
+        players,
+        game.finalStandings || [],
+        game.winnerUids || []
+      );
       ui.showResultDialog(summary, () => {
         clearSession();
         dropGameSubscription();
-        openLanding("Spiel abgeschlossen. Du kannst jederzeit eine neue Runde starten.", "success");
+        openLanding("Spiel beendet. Du kannst jederzeit eine neue Runde starten.", "success");
       });
     }
   } else {
@@ -309,11 +327,7 @@ function renderGame(snapshot) {
 }
 
 function renderBySnapshot(snapshot) {
-  if (!snapshot) {
-    openLanding();
-    return;
-  }
-
+  if (!snapshot) { openLanding(); return; }
   const me = snapshot.players?.[authUid];
   if (!me) {
     clearSession();
@@ -321,20 +335,15 @@ function renderBySnapshot(snapshot) {
     openLanding("Du bist kein Teilnehmer dieses Spiels mehr.", "error");
     return;
   }
-
-  if (snapshot.meta?.status === "lobby") {
-    renderLobby(snapshot);
-    return;
-  }
-
+  if (snapshot.meta?.status === "lobby") { renderLobby(snapshot); return; }
   renderGame(snapshot);
 }
 
+// ─── Firebase subscription ───────────────────────────────────────────────────
+
 function bindGameSubscription(code) {
   const normalized = sanitizeJoinCode(code);
-  if (!normalized) {
-    throw new Error("Ungültiger Spielcode.");
-  }
+  if (!normalized) throw new Error("Ungültiger Spielcode.");
 
   dropGameSubscription();
   activeCode = normalized;
@@ -344,9 +353,7 @@ function bindGameSubscription(code) {
   unsubscribeGame = subscribe(
     `games/${normalized}`,
     async (snapshot) => {
-      if (activeCode !== normalized) {
-        return;
-      }
+      if (activeCode !== normalized) return;
 
       const value = snapshot.val();
       if (!value) {
@@ -356,43 +363,39 @@ function bindGameSubscription(code) {
         return;
       }
 
-      patchState({
-        activeCode: normalized,
-        gameSnapshot: value,
-      });
+      patchState({ activeCode: normalized, gameSnapshot: value });
 
       if (presenceCode !== normalized) {
         try {
           await attachPresence(normalized, authUid);
           presenceCode = normalized;
-        } catch (_error) {
-          setGameMessage("Präsenz-Synchronisierung fehlgeschlagen. Live-Updates können verzögert sein.", "error");
+        } catch (_err) {
+          setGameMessage("Präsenz-Sync fehlgeschlagen. Live-Updates können verzögert sein.", "error");
         }
       }
 
-      if (activeCode !== normalized) {
-        return;
-      }
+      if (activeCode !== normalized) return;
 
       ui.setConnectionState("Verbunden", "good");
       renderBySnapshot(value);
     },
     () => {
       ui.setConnectionState("Verbindungsproblem", "bad");
-      setGameMessage("Live-Verbindung unterbrochen. Neuer Versuch...");
+      setGameMessage("Live-Verbindung unterbrochen. Versuche erneut…");
     }
   );
 }
 
+// ─── Lobby actions ───────────────────────────────────────────────────────────
+
 async function handleCreateLobby() {
   const name = sanitizeDisplayName(ui.elements.displayNameInput.value);
   saveDisplayName(name);
-
   try {
     setBusy(true);
     clearMessages();
-    const readyUid = await ensureActionAuthUid();
-    const created = await createLobby(readyUid, name);
+    const uid     = await ensureActionAuthUid();
+    const created = await createLobby(uid, name);
     bindGameSubscription(created.code);
     setLobbyMessage("Lobby erstellt. Teile den Beitrittscode.", "success");
   } catch (error) {
@@ -406,14 +409,13 @@ async function handleJoinLobby() {
   const name = sanitizeDisplayName(ui.elements.displayNameInput.value);
   const code = String(ui.elements.joinCodeInput.value || "");
   saveDisplayName(name);
-
   try {
     setBusy(true);
     clearMessages();
-    const readyUid = await ensureActionAuthUid();
-    const joined = await joinLobby(code, readyUid, name);
+    const uid    = await ensureActionAuthUid();
+    const joined = await joinLobby(code, uid, name);
     bindGameSubscription(joined.code);
-    setLobbyMessage("Lobby erfolgreich beigetreten.", "success");
+    setLobbyMessage("Lobby beigetreten.", "success");
   } catch (error) {
     setLandingMessage(toUiErrorMessage(error), "error");
   } finally {
@@ -422,10 +424,7 @@ async function handleJoinLobby() {
 }
 
 async function handleLeaveLobby() {
-  if (!activeCode) {
-    return;
-  }
-
+  if (!activeCode) return;
   let left = false;
   try {
     setBusy(true);
@@ -444,14 +443,11 @@ async function handleLeaveLobby() {
 }
 
 async function handleStartGame() {
-  if (!activeCode) {
-    return;
-  }
-
+  if (!activeCode) return;
   try {
     setBusy(true);
     await startGame(activeCode, authUid);
-    setLobbyMessage("Spiel wird gestartet...", "success");
+    setLobbyMessage("Spiel wird gestartet…", "success");
   } catch (error) {
     setLobbyMessage(error.message, "error");
   } finally {
@@ -459,22 +455,47 @@ async function handleStartGame() {
   }
 }
 
+// ─── Tile placement helpers ───────────────────────────────────────────────────
+
 function findTentativeByCell(x, y) {
-  return getState().tentativePlacements.findIndex((placement) => placement.x === x && placement.y === y);
+  return getState().tentativePlacements.findIndex((p) => p.x === x && p.y === y);
 }
 
 function rackTileAlreadyPlaced(tileId) {
-  return getState().tentativePlacements.some((placement) => placement.tile.id === tileId);
+  return getState().tentativePlacements.some((p) => p.tile.id === tileId);
 }
 
-function handleRackClick(event) {
-  const target = event.target.closest("[data-rack-tile-id]");
-  if (!target || !myTurn()) {
+// Shared placement logic used by both click and drag-drop
+function placeTileOnBoard(x, y, tileId, tile) {
+  const snapshot = currentSnapshot();
+  const key = coordinateKey(x, y);
+  if (snapshot?.game?.board?.[key]) return; // permanent tile
+
+  const existingIndex = findTentativeByCell(x, y);
+  if (existingIndex >= 0) {
+    // Cell already has a tentative tile — ignore (don't replace)
     return;
   }
 
-  const tileId = target.dataset.rackTileId;
+  if (rackTileAlreadyPlaced(tileId)) {
+    setGameMessage("Dieses Teil wurde in diesem Zug bereits platziert.", "error");
+    return;
+  }
+
   const state = getState();
+  setTentativePlacements([...state.tentativePlacements, { x, y, tile }]);
+  setSelectedRackTile(null);
+  refreshCurrentGameView();
+}
+
+// ─── Click handlers ──────────────────────────────────────────────────────────
+
+function handleRackClick(event) {
+  const target = event.target.closest("[data-rack-tile-id]");
+  if (!target || !myTurn()) return;
+
+  const tileId = target.dataset.rackTileId;
+  const state  = getState();
 
   if (state.exchangeMode) {
     toggleExchangeTile(tileId);
@@ -483,7 +504,8 @@ function handleRackClick(event) {
     return;
   }
 
-  const placementIndex = state.tentativePlacements.findIndex((placement) => placement.tile.id === tileId);
+  // If this tile is already tentatively placed, remove it
+  const placementIndex = state.tentativePlacements.findIndex((p) => p.tile.id === tileId);
   if (placementIndex >= 0) {
     const next = [...state.tentativePlacements];
     next.splice(placementIndex, 1);
@@ -493,6 +515,7 @@ function handleRackClick(event) {
     return;
   }
 
+  // Toggle selection
   if (state.selectedRackTileId === tileId) {
     setSelectedRackTile(null);
   } else {
@@ -503,20 +526,18 @@ function handleRackClick(event) {
 
 function handleBoardClick(event) {
   const button = event.target.closest("[data-board-x][data-board-y]");
-  if (!button || !myTurn()) {
-    return;
-  }
+  if (!button || !myTurn()) return;
 
-  const x = Number(button.dataset.boardX);
-  const y = Number(button.dataset.boardY);
+  const x   = Number(button.dataset.boardX);
+  const y   = Number(button.dataset.boardY);
   const key = coordinateKey(x, y);
 
   const snapshot = currentSnapshot();
-  if (snapshot?.game?.board?.[key]) {
-    return;
-  }
+  if (snapshot?.game?.board?.[key]) return; // permanent tile — ignore
 
   const state = getState();
+
+  // Click on a tentative cell → remove it
   const existingIndex = findTentativeByCell(x, y);
   if (existingIndex >= 0) {
     const next = [...state.tentativePlacements];
@@ -527,45 +548,193 @@ function handleBoardClick(event) {
   }
 
   if (state.exchangeMode) {
-    setGameMessage("Deaktiviere den Tauschmodus, um Teile zu platzieren.", "error");
+    setGameMessage("Deaktiviere zuerst den Tauschmodus, um Steine zu platzieren.", "error");
     return;
   }
 
   const selectedTileId = state.selectedRackTileId;
   if (!selectedTileId) {
-    setGameMessage("Bitte zuerst ein Teil aus dem Ablageständer auswählen.", "error");
+    setGameMessage("Wähle zuerst einen Stein aus deinem Ständer.", "error");
     return;
   }
 
-  if (rackTileAlreadyPlaced(selectedTileId)) {
-    setGameMessage("Dieses Teil wurde in diesem Zug bereits platziert.", "error");
-    return;
-  }
-
-  const tile = myRack().find((entry) => entry.id === selectedTileId);
+  const tile = myRack().find((t) => t.id === selectedTileId);
   if (!tile) {
     setGameMessage("Das ausgewählte Teil ist nicht mehr verfügbar.", "error");
     setSelectedRackTile(null);
     return;
   }
 
-  setTentativePlacements([
-    ...state.tentativePlacements,
-    {
-      x,
-      y,
-      tile,
-    },
-  ]);
-  setSelectedRackTile(null);
-  refreshCurrentGameView();
+  placeTileOnBoard(x, y, selectedTileId, tile);
 }
+
+// ─── Drag & Drop ─────────────────────────────────────────────────────────────
+
+function getGhostEl() {
+  return document.getElementById("drag-ghost");
+}
+
+function clearDropHighlight() {
+  if (dragState?.currentDropTarget) {
+    dragState.currentDropTarget.classList.remove("drag-over");
+  }
+}
+
+// Minimum pixels of movement before we commit to a drag (preserves click)
+const DRAG_THRESHOLD = 6;
+
+// Pending drag: set on pointerdown, promoted to real drag on threshold
+let pendingDrag = null;
+
+function initDragAndDrop() {
+  const rack = ui.elements.rack;
+
+  rack.addEventListener("pointerdown", (event) => {
+    // Only primary button (left click / first touch)
+    if (event.button !== 0 && event.pointerType === "mouse") return;
+    if (!myTurn()) return;
+
+    const target = event.target.closest("[data-rack-tile-id]");
+    if (!target) return;
+
+    const tileId = target.dataset.rackTileId;
+    const state  = getState();
+
+    if (state.exchangeMode) return;
+    if (rackTileAlreadyPlaced(tileId)) return;
+
+    const tile = myRack().find((t) => t.id === tileId);
+    if (!tile) return;
+
+    // Record pending drag — don't preventDefault yet (preserves click)
+    pendingDrag = {
+      tileId,
+      tile,
+      sourceEl: target,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+    };
+
+    document.addEventListener("pointermove", onPendingMove, { passive: true });
+    document.addEventListener("pointerup",   onPendingCancel);
+    document.addEventListener("pointercancel", onPendingCancel);
+  });
+}
+
+function onPendingMove(event) {
+  if (!pendingDrag) return;
+  const dx = event.clientX - pendingDrag.startX;
+  const dy = event.clientY - pendingDrag.startY;
+  if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+
+  // Threshold exceeded — commit to drag
+  const { tileId, tile, sourceEl, pointerId } = pendingDrag;
+  pendingDrag = null;
+
+  document.removeEventListener("pointermove", onPendingMove);
+  document.removeEventListener("pointerup",   onPendingCancel);
+  document.removeEventListener("pointercancel", onPendingCancel);
+
+  // Show ghost
+  const ghost = getGhostEl();
+  ghost.innerHTML = renderTileHtml(tile);
+  ghost.style.display = "block";
+  ghost.style.left = event.clientX + "px";
+  ghost.style.top  = event.clientY + "px";
+
+  dragState = {
+    tileId,
+    tile,
+    sourceEl,
+    currentDropTarget: null,
+  };
+
+  sourceEl.classList.add("dragging");
+  sourceEl.setPointerCapture(pointerId);
+
+  document.addEventListener("pointermove", onDragMove, { passive: false });
+  document.addEventListener("pointerup",   onDragEnd);
+  document.addEventListener("pointercancel", onDragCancel);
+}
+
+function onPendingCancel() {
+  pendingDrag = null;
+  document.removeEventListener("pointermove", onPendingMove);
+  document.removeEventListener("pointerup",   onPendingCancel);
+  document.removeEventListener("pointercancel", onPendingCancel);
+}
+
+function onDragMove(event) {
+  if (!dragState) return;
+  event.preventDefault();
+
+  const ghost = getGhostEl();
+  ghost.style.left = event.clientX + "px";
+  ghost.style.top  = event.clientY + "px";
+
+  // Temporarily hide ghost to hit-test through it
+  ghost.style.display = "none";
+  const el = document.elementFromPoint(event.clientX, event.clientY);
+  ghost.style.display = "block";
+
+  const cell = el?.closest("[data-board-x][data-board-y]:not([disabled])");
+
+  if (dragState.currentDropTarget && dragState.currentDropTarget !== cell) {
+    dragState.currentDropTarget.classList.remove("drag-over");
+  }
+  if (cell) {
+    cell.classList.add("drag-over");
+    dragState.currentDropTarget = cell;
+  } else {
+    dragState.currentDropTarget = null;
+  }
+}
+
+function onDragEnd() {
+  if (!dragState) return;
+
+  const { tileId, tile, sourceEl, currentDropTarget } = dragState;
+
+  const ghost = getGhostEl();
+  ghost.style.display = "none";
+  ghost.innerHTML = "";
+
+  if (currentDropTarget) currentDropTarget.classList.remove("drag-over");
+  sourceEl.classList.remove("dragging");
+
+  document.removeEventListener("pointermove", onDragMove);
+  document.removeEventListener("pointerup",   onDragEnd);
+  document.removeEventListener("pointercancel", onDragCancel);
+
+  const wasDropTarget = currentDropTarget;
+  dragState = null;
+
+  if (wasDropTarget) {
+    const x = Number(wasDropTarget.dataset.boardX);
+    const y = Number(wasDropTarget.dataset.boardY);
+    placeTileOnBoard(x, y, tileId, tile);
+  }
+}
+
+function onDragCancel() {
+  if (!dragState) return;
+  const ghost = getGhostEl();
+  ghost.style.display = "none";
+  ghost.innerHTML = "";
+  if (dragState.currentDropTarget) dragState.currentDropTarget.classList.remove("drag-over");
+  dragState.sourceEl.classList.remove("dragging");
+  document.removeEventListener("pointermove", onDragMove);
+  document.removeEventListener("pointerup",   onDragEnd);
+  document.removeEventListener("pointercancel", onDragCancel);
+  dragState = null;
+}
+
+// ─── Game actions ─────────────────────────────────────────────────────────────
 
 function undoLastPlacement() {
   const state = getState();
-  if (!state.tentativePlacements.length) {
-    return;
-  }
+  if (!state.tentativePlacements.length) return;
   const next = [...state.tentativePlacements];
   next.pop();
   setTentativePlacements(next);
@@ -579,28 +748,21 @@ function cancelTurnDraft() {
 }
 
 async function handleCommitMove() {
-  if (!myTurn()) {
-    return;
-  }
+  if (!myTurn()) return;
   const draft = getState().tentativePlacements;
   if (!draft.length) {
-    setGameMessage("Platziere mindestens ein Teil, bevor du bestätigst.", "error");
+    setGameMessage("Platziere mindestens einen Stein, bevor du bestätigst.", "error");
     return;
   }
-
   try {
     setBusy(true);
     await commitMove(
       activeCode,
       authUid,
-      draft.map((placement) => ({
-        x: placement.x,
-        y: placement.y,
-        tileId: placement.tile.id,
-      }))
+      draft.map((p) => ({ x: p.x, y: p.y, tileId: p.tile.id }))
     );
     resetTurnDraft();
-    setGameMessage("Zug bestätigt.", "success");
+    setGameMessage("Zug bestätigt!", "success");
   } catch (error) {
     setGameMessage(error.message, "error");
   } finally {
@@ -611,39 +773,32 @@ async function handleCommitMove() {
 function toggleExchangeMode() {
   const state = getState();
   if (state.tentativePlacements.length > 0) {
-    setGameMessage("Bestätige oder verwerfe zuerst deinen platzierten Zug.", "error");
+    setGameMessage("Bestätige oder verwerfe zuerst deinen Zug.", "error");
     return;
   }
   setExchangeMode(!state.exchangeMode);
   setSelectedRackTile(null);
-  if (!getState().exchangeMode) {
-    clearExchangeSelection();
-  }
+  if (!getState().exchangeMode) clearExchangeSelection();
   refreshCurrentGameView();
 }
 
 async function handleExchangeSelected() {
-  if (!myTurn()) {
-    return;
-  }
-
+  if (!myTurn()) return;
   const state = getState();
   if (!state.exchangeMode) {
     setGameMessage("Aktiviere zuerst den Tauschmodus.", "error");
     return;
   }
-
   const selected = [...state.exchangeSelection];
   if (!selected.length) {
-    setGameMessage("Wähle mindestens ein Teil zum Tauschen aus.", "error");
+    setGameMessage("Markiere mindestens einen Stein zum Tauschen.", "error");
     return;
   }
-
   try {
     setBusy(true);
     await exchangeTiles(activeCode, authUid, selected);
     resetTurnDraft();
-    setGameMessage("Teile wurden getauscht.", "success");
+    setGameMessage("Steine wurden getauscht.", "success");
   } catch (error) {
     setGameMessage(error.message, "error");
   } finally {
@@ -652,20 +807,13 @@ async function handleExchangeSelected() {
 }
 
 async function handlePassTurn() {
-  if (!myTurn()) {
-    return;
-  }
-
+  if (!myTurn()) return;
   if (getState().tentativePlacements.length > 0) {
-    setGameMessage("Bestätige oder verwerfe zuerst deine vorläufigen Platzierungen.", "error");
+    setGameMessage("Bestätige oder verwerfe zuerst deine Platzierungen.", "error");
     return;
   }
-
-  const confirmed = window.confirm("Möchtest du deinen Zug passen?");
-  if (!confirmed) {
-    return;
-  }
-
+  const confirmed = window.confirm("Zug wirklich passen?");
+  if (!confirmed) return;
   try {
     setBusy(true);
     await passTurn(activeCode, authUid);
@@ -680,23 +828,19 @@ async function handlePassTurn() {
 
 async function handleDevDeleteGame() {
   if (!activeCode) {
-    setGameMessage("Kein aktives Spiel zum Löschen vorhanden.", "error");
+    setGameMessage("Kein aktives Spiel zum Löschen.", "error");
     return;
   }
-
   const code = activeCode;
-  const confirmed = window.confirm(`Spiel ${code} jetzt aus Firebase löschen?`);
-  if (!confirmed) {
-    return;
-  }
-
+  const confirmed = window.confirm(`Spiel ${code} wirklich aus Firebase löschen?`);
+  if (!confirmed) return;
   try {
     setBusy(true);
     await ensureActionAuthUid();
     await write(`games/${code}`, null);
     clearSession();
     dropGameSubscription();
-    openLanding(`Spiel ${code} gelöscht (Dev-Reset).`, "success");
+    openLanding(`Spiel ${code} gelöscht.`, "success");
   } catch (error) {
     setGameMessage(toUiErrorMessage(error), "error");
   } finally {
@@ -706,31 +850,33 @@ async function handleDevDeleteGame() {
 
 async function copyJoinCode() {
   const code = activeCode || currentSnapshot()?.meta?.joinCode;
-  if (!code) {
-    return;
-  }
-
+  if (!code) return;
   try {
     await navigator.clipboard.writeText(code);
-    setLobbyMessage("Beitrittscode kopiert.", "success");
-  } catch (_error) {
-    setLobbyMessage(`Kopieren fehlgeschlagen. Teile den Code manuell: ${code}`, "error");
+    const btn = ui.elements.copyCodeBtn;
+    btn.classList.add("copied");
+    btn.textContent = "Kopiert!";
+    setLobbyMessage("Code in die Zwischenablage kopiert.", "success");
+    setTimeout(() => {
+      btn.classList.remove("copied");
+      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Kopieren`;
+    }, 2000);
+  } catch (_err) {
+    setLobbyMessage(`Kopieren fehlgeschlagen. Code: ${code}`, "error");
   }
 }
 
 function toggleRackHelp() {
-  const button = ui.elements.rackHelpToggleBtn;
-  const helpText = ui.elements.rackHelpText;
-  if (!button || !helpText) {
-    return;
-  }
-
-  const expanded = button.getAttribute("aria-expanded") === "true";
-  const nextExpanded = !expanded;
-  button.setAttribute("aria-expanded", String(nextExpanded));
-  button.textContent = nextExpanded ? "×" : "?";
-  helpText.classList.toggle("hidden", !nextExpanded);
+  const btn  = ui.elements.rackHelpToggleBtn;
+  const text = ui.elements.rackHelpText;
+  if (!btn || !text) return;
+  const expanded = btn.getAttribute("aria-expanded") === "true";
+  btn.setAttribute("aria-expanded", String(!expanded));
+  btn.textContent = !expanded ? "×" : "?";
+  text.classList.toggle("hidden", expanded);
 }
+
+// ─── Event binding ───────────────────────────────────────────────────────────
 
 function bindUiEvents() {
   ui.elements.displayNameInput.addEventListener("change", () => {
@@ -743,46 +889,48 @@ function bindUiEvents() {
     ui.elements.joinCodeInput.value = sanitizeJoinCode(ui.elements.joinCodeInput.value);
   });
 
-  ui.elements.joinCodeInput.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
-      handleJoinLobby();
-    }
+  ui.elements.joinCodeInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") handleJoinLobby();
+  });
+
+  ui.elements.displayNameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") handleCreateLobby();
   });
 
   ui.elements.createGameBtn.addEventListener("click", handleCreateLobby);
-  ui.elements.joinGameBtn.addEventListener("click", handleJoinLobby);
+  ui.elements.joinGameBtn.addEventListener("click",   handleJoinLobby);
 
-  ui.elements.copyCodeBtn.addEventListener("click", copyJoinCode);
+  ui.elements.copyCodeBtn.addEventListener("click",   copyJoinCode);
   ui.elements.leaveLobbyBtn.addEventListener("click", handleLeaveLobby);
-  ui.elements.startGameBtn.addEventListener("click", handleStartGame);
+  ui.elements.startGameBtn.addEventListener("click",  handleStartGame);
 
   ui.elements.rack.addEventListener("click", handleRackClick);
   ui.elements.boardGrid.addEventListener("click", handleBoardClick);
 
-  ui.elements.commitMoveBtn.addEventListener("click", handleCommitMove);
-  ui.elements.undoPlacementBtn.addEventListener("click", undoLastPlacement);
-  ui.elements.cancelTurnBtn.addEventListener("click", cancelTurnDraft);
-  ui.elements.exchangeModeBtn.addEventListener("click", toggleExchangeMode);
+  ui.elements.commitMoveBtn.addEventListener("click",      handleCommitMove);
+  ui.elements.undoPlacementBtn.addEventListener("click",   undoLastPlacement);
+  ui.elements.cancelTurnBtn.addEventListener("click",      cancelTurnDraft);
+  ui.elements.exchangeModeBtn.addEventListener("click",    toggleExchangeMode);
   ui.elements.exchangeSelectedBtn.addEventListener("click", handleExchangeSelected);
-  ui.elements.passTurnBtn.addEventListener("click", handlePassTurn);
-  ui.elements.devDeleteGameBtn.addEventListener("click", handleDevDeleteGame);
-  ui.elements.rackHelpToggleBtn.addEventListener("click", toggleRackHelp);
+  ui.elements.passTurnBtn.addEventListener("click",        handlePassTurn);
+  ui.elements.devDeleteGameBtn.addEventListener("click",   handleDevDeleteGame);
+  ui.elements.rackHelpToggleBtn.addEventListener("click",  toggleRackHelp);
 
-  window.addEventListener("beforeunload", () => {
-    detachPresence();
-  });
+  window.addEventListener("beforeunload", () => detachPresence());
+
+  // Drag and drop
+  initDragAndDrop();
 }
+
+// ─── Session resume ───────────────────────────────────────────────────────────
 
 async function tryResumeSession() {
   const session = loadSession();
-  if (!session?.code) {
-    return false;
-  }
-
+  if (!session?.code) return false;
   try {
     bindGameSubscription(session.code);
     return true;
-  } catch (_error) {
+  } catch (_err) {
     clearSession();
     return false;
   }
@@ -790,26 +938,27 @@ async function tryResumeSession() {
 
 function applyLoadedDisplayName() {
   const stored = sanitizeDisplayName(loadDisplayName());
-  if (stored) {
-    ui.elements.displayNameInput.value = stored;
-  }
+  if (stored) ui.elements.displayNameInput.value = stored;
 }
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
 
 export async function startApp() {
   bindUiEvents();
   applyLoadedDisplayName();
 
+  // Disable inputs while Firebase initialises
   ui.elements.displayNameInput.disabled = true;
-  ui.elements.joinCodeInput.disabled = true;
-  ui.elements.createGameBtn.disabled = true;
-  ui.elements.joinGameBtn.disabled = true;
+  ui.elements.joinCodeInput.disabled    = true;
+  ui.elements.createGameBtn.disabled    = true;
+  ui.elements.joinGameBtn.disabled      = true;
 
   ui.showScreen("landing-screen");
-  ui.setConnectionState("Verbinde...", "neutral");
+  ui.setConnectionState("Verbinde…", "neutral");
 
   const bootstrap = await bootstrapFirebase();
   if (!bootstrap.ok) {
-    ui.setConnectionState("Firebase-Konfiguration fehlt", "bad");
+    ui.setConnectionState("Firebase fehlt", "bad");
     ui.showScreen("setup-screen");
     return;
   }
@@ -822,13 +971,13 @@ export async function startApp() {
 
   ui.setConnectionState("Verbunden", "good");
   ui.elements.displayNameInput.disabled = false;
-  ui.elements.joinCodeInput.disabled = false;
-  ui.elements.createGameBtn.disabled = false;
-  ui.elements.joinGameBtn.disabled = false;
+  ui.elements.joinCodeInput.disabled    = false;
+  ui.elements.createGameBtn.disabled    = false;
+  ui.elements.joinGameBtn.disabled      = false;
 
   const resumed = await tryResumeSession();
   if (!resumed) {
-    openLanding("Erstelle eine Lobby oder tritt mit einem Code bei.");
+    openLanding("Erstelle ein neues Spiel oder tritt mit einem Code bei.");
   }
 
   updateActionButtonState();

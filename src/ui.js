@@ -67,12 +67,13 @@ export function createUi() {
 
   function setConnectionState(label, tone = "neutral") {
     elements.connectionPill.textContent = label;
-    elements.connectionPill.className = `pill ${tone}`;
+    elements.connectionPill.className = `connection-pill pill ${tone}`;
   }
 
   function setMessage(target, text, tone = "") {
     target.textContent = text || "";
-    target.className = "message";
+    // Remove only tone classes, preserve base classes on the element
+    target.classList.remove("error", "success");
     if (tone) {
       target.classList.add(tone);
     }
