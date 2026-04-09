@@ -6,6 +6,7 @@ import {
   getAuthUser,
   subscribe,
   waitForAuthUser,
+  write,
 } from "./firebase.js";
 import { commitMove, exchangeTiles, passTurn } from "./game.js";
 import { joinLobby, createLobby, leaveLobby, startGame } from "./lobby.js";
@@ -189,6 +190,7 @@ function updateActionButtonState() {
   ui.elements.exchangeSelectedBtn.disabled =
     actionBusy || !inProgress || !isMyTurn || !state.exchangeMode || !hasExchangeSelection;
   ui.elements.passTurnBtn.disabled = actionBusy || !inProgress || !isMyTurn || hasTentative;
+  ui.elements.devDeleteGameBtn.disabled = actionBusy || !activeCode;
 
   ui.elements.exchangeModeBtn.textContent = `Exchange Mode: ${state.exchangeMode ? "On" : "Off"}`;
 }
@@ -676,6 +678,32 @@ async function handlePassTurn() {
   }
 }
 
+async function handleDevDeleteGame() {
+  if (!activeCode) {
+    setGameMessage("No active game to delete.", "error");
+    return;
+  }
+
+  const code = activeCode;
+  const confirmed = window.confirm(`Delete game ${code} from Firebase now?`);
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    setBusy(true);
+    await ensureActionAuthUid();
+    await write(`games/${code}`, null);
+    clearSession();
+    dropGameSubscription();
+    openLanding(`Deleted game ${code} (dev reset).`, "success");
+  } catch (error) {
+    setGameMessage(toUiErrorMessage(error), "error");
+  } finally {
+    setBusy(false);
+  }
+}
+
 async function copyJoinCode() {
   const code = activeCode || currentSnapshot()?.meta?.joinCode;
   if (!code) {
@@ -723,6 +751,7 @@ function bindUiEvents() {
   ui.elements.exchangeModeBtn.addEventListener("click", toggleExchangeMode);
   ui.elements.exchangeSelectedBtn.addEventListener("click", handleExchangeSelected);
   ui.elements.passTurnBtn.addEventListener("click", handlePassTurn);
+  ui.elements.devDeleteGameBtn.addEventListener("click", handleDevDeleteGame);
 
   window.addEventListener("beforeunload", () => {
     detachPresence();

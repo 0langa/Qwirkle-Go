@@ -37,6 +37,7 @@ export function createUi() {
     exchangeModeBtn: document.getElementById("exchange-mode-btn"),
     exchangeSelectedBtn: document.getElementById("exchange-selected-btn"),
     passTurnBtn: document.getElementById("pass-turn-btn"),
+    devDeleteGameBtn: document.getElementById("dev-delete-game-btn"),
     gameMessage: document.getElementById("game-message"),
 
     resultTemplate: document.getElementById("result-dialog-template"),
