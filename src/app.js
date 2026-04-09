@@ -198,13 +198,11 @@ function updateActionButtonState() {
   const badge = ui.elements.gameStatus;
   if (!inProgress) {
     badge.textContent = snapshot?.meta?.status === "finished" ? "Beendet" : "–";
+    badge.classList.remove("hidden");
     badge.classList.remove("my-turn");
-  } else if (isMyTurn) {
-    badge.textContent = "Du bist dran!";
-    badge.classList.add("my-turn");
   } else {
-    const currentName = snapshot?.players?.[snapshot?.game?.currentPlayerUid]?.name || "–";
-    badge.textContent = `${currentName} ist dran`;
+    badge.textContent = "";
+    badge.classList.add("hidden");
     badge.classList.remove("my-turn");
   }
 }
