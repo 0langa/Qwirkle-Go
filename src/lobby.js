@@ -90,7 +90,7 @@ function updateHostIfNeeded(state) {
 
 function ensureTransactionResult(result, fallback) {
   if (!result.committed) {
-    throw new LobbyFlowError("transaction-not-committed", fallback || "Operation could not be completed.");
+    throw new LobbyFlowError("transaction-not-committed", fallback || "Vorgang konnte nicht abgeschlossen werden.");
   }
   return result.snapshot?.val() || null;
 }
@@ -100,12 +100,12 @@ async function resolveUid(uid) {
   try {
     user = await ensureAuthReady();
   } catch (_error) {
-    throw new LobbyFlowError("auth-not-ready", "Authentication is still initializing. Please try again.");
+    throw new LobbyFlowError("auth-not-ready", "Authentifizierung wird noch initialisiert. Bitte erneut versuchen.");
   }
   const authUid = user?.uid || getAuthUser()?.uid || null;
   const resolved = uid || authUid;
   if (!resolved) {
-    throw new LobbyFlowError("auth-not-ready", "Authentication is still initializing. Please try again.");
+    throw new LobbyFlowError("auth-not-ready", "Authentifizierung wird noch initialisiert. Bitte erneut versuchen.");
   }
   return resolved;
 }
@@ -129,23 +129,23 @@ function validateLobbyShape(data) {
 
 function mapFirebaseError(error) {
   const code = String(error?.code || "").toLowerCase();
-  const message = String(error?.message || "Unexpected Firebase error.");
+  const message = String(error?.message || "Unerwarteter Firebase-Fehler.");
 
   if (code.includes("permission-denied")) {
-    return new LobbyFlowError("permission-denied", "Permission denied by Firebase rules.", {
+    return new LobbyFlowError("permission-denied", "Zugriff durch Firebase-Regeln verweigert.", {
       firebaseCode: error?.code,
       firebaseMessage: message,
     });
   }
 
   if (code.includes("network") || code.includes("unavailable") || code.includes("disconnected")) {
-    return new LobbyFlowError("network-error", "Network/database connection issue while reaching Firebase.", {
+    return new LobbyFlowError("network-error", "Netzwerk-/Datenbankproblem beim Zugriff auf Firebase.", {
       firebaseCode: error?.code,
       firebaseMessage: message,
     });
   }
 
-  return new LobbyFlowError("firebase-error", "Unexpected Firebase error during lobby operation.", {
+  return new LobbyFlowError("firebase-error", "Unerwarteter Firebase-Fehler beim Lobby-Vorgang.", {
     firebaseCode: error?.code,
     firebaseMessage: message,
   });
@@ -167,7 +167,7 @@ export async function createLobby(uid, displayName) {
   const name = sanitizeDisplayName(displayName);
 
   if (!name) {
-    throw new LobbyFlowError("invalid-display-name", "Please enter a display name first.");
+    throw new LobbyFlowError("invalid-display-name", "Bitte zuerst einen Anzeigenamen eingeben.");
   }
 
   let attempts = 0;
@@ -192,7 +192,7 @@ export async function createLobby(uid, displayName) {
     }
   }
 
-  throw new LobbyFlowError("code-generation-failed", "Could not reserve a join code. Please try again.");
+  throw new LobbyFlowError("code-generation-failed", "Beitrittscode konnte nicht reserviert werden. Bitte erneut versuchen.");
 }
 
 export async function joinLobby(codeInput, uid, displayName) {
@@ -200,7 +200,7 @@ export async function joinLobby(codeInput, uid, displayName) {
   const name = sanitizeDisplayName(displayName);
 
   if (!name) {
-    throw new LobbyFlowError("invalid-display-name", "Please enter a display name first.");
+    throw new LobbyFlowError("invalid-display-name", "Bitte zuerst einen Anzeigenamen eingeben.");
   }
 
   const rawInputCode = String(codeInput || "");
@@ -215,7 +215,7 @@ export async function joinLobby(codeInput, uid, displayName) {
   });
 
   if (!normalizedCode || normalizedCode.length < 4 || normalizedCode.length > 8 || /[^A-Z0-9]/.test(normalizedCode)) {
-    throw new LobbyFlowError("invalid-join-code", "Enter a valid join code.");
+    throw new LobbyFlowError("invalid-join-code", "Bitte einen gueltigen Beitrittscode eingeben.");
   }
 
   let snapshot;
@@ -236,38 +236,38 @@ export async function joinLobby(codeInput, uid, displayName) {
   });
 
   if (!exists) {
-    throw new LobbyFlowError("game-not-found", "Game not found. Check the join code and try again.");
+    throw new LobbyFlowError("game-not-found", "Spiel nicht gefunden. Bitte pruefe den Beitrittscode und versuche es erneut.");
   }
 
   const lobbyData = snapshot.val();
   if (!validateLobbyShape(lobbyData)) {
-    throw new LobbyFlowError("invalid-lobby-data", "Lobby data is malformed. Please create a new game.");
+    throw new LobbyFlowError("invalid-lobby-data", "Lobby-Daten sind fehlerhaft. Bitte ein neues Spiel erstellen.");
   }
 
   const preMeta = lobbyData.meta || {};
   const prePlayers = lobbyData.players || {};
 
   if (preMeta.status === "in_progress") {
-    throw new LobbyFlowError("game-already-started", "That game already started.");
+    throw new LobbyFlowError("game-already-started", "Dieses Spiel wurde bereits gestartet.");
   }
 
   if (preMeta.status === "finished") {
-    throw new LobbyFlowError("game-finished", "That game already finished.");
+    throw new LobbyFlowError("game-finished", "Dieses Spiel ist bereits beendet.");
   }
 
   if (preMeta.status !== "lobby") {
-    throw new LobbyFlowError("lobby-unavailable", "This lobby is unavailable right now.");
+    throw new LobbyFlowError("lobby-unavailable", "Diese Lobby ist momentan nicht verfuegbar.");
   }
 
   const preAlreadyIn = Boolean(prePlayers[resolvedUid]);
   const preCount = Object.keys(prePlayers).length;
   if (!preAlreadyIn && preCount >= MAX_PLAYERS) {
-    throw new LobbyFlowError("lobby-full", "Lobby is full (4 players).");
+    throw new LobbyFlowError("lobby-full", "Die Lobby ist voll (4 Spieler).");
   }
 
   let failure = {
     code: "join-failed",
-    message: "Could not join lobby.",
+    message: "Lobby-Beitritt fehlgeschlagen.",
   };
 
   let usedSnapshotFallback = false;
@@ -289,7 +289,7 @@ export async function joinLobby(codeInput, uid, displayName) {
       if (!base) {
         failure = {
           code: "lobby-unavailable",
-          message: "Lobby was closed before you could join.",
+          message: "Die Lobby wurde geschlossen, bevor du beitreten konntest.",
         };
         return;
       }
@@ -297,7 +297,7 @@ export async function joinLobby(codeInput, uid, displayName) {
       if (!validateLobbyShape(base)) {
         failure = {
           code: "invalid-lobby-data",
-          message: "Lobby data is malformed.",
+          message: "Lobby-Daten sind fehlerhaft.",
         };
         return;
       }
@@ -308,7 +308,7 @@ export async function joinLobby(codeInput, uid, displayName) {
       if (meta.status === "in_progress") {
         failure = {
           code: "game-already-started",
-          message: "That game already started.",
+          message: "Dieses Spiel wurde bereits gestartet.",
         };
         return;
       }
@@ -316,7 +316,7 @@ export async function joinLobby(codeInput, uid, displayName) {
       if (meta.status === "finished") {
         failure = {
           code: "game-finished",
-          message: "That game already finished.",
+          message: "Dieses Spiel ist bereits beendet.",
         };
         return;
       }
@@ -324,7 +324,7 @@ export async function joinLobby(codeInput, uid, displayName) {
       if (meta.status !== "lobby") {
         failure = {
           code: "lobby-unavailable",
-          message: "This lobby is unavailable right now.",
+          message: "Diese Lobby ist momentan nicht verfuegbar.",
         };
         return;
       }
@@ -334,7 +334,7 @@ export async function joinLobby(codeInput, uid, displayName) {
       if (!alreadyIn && playerCount >= MAX_PLAYERS) {
         failure = {
           code: "lobby-full",
-          message: "Lobby is full (4 players).",
+          message: "Die Lobby ist voll (4 Spieler).",
         };
         return;
       }
@@ -385,13 +385,13 @@ export async function leaveLobby(codeInput, uid) {
   try {
     result = await transact(`games/${code}`, (current) => {
       if (!current) {
-        failure = "Lobby not found.";
+        failure = "Lobby nicht gefunden.";
         return;
       }
 
       const meta = current.meta || {};
       if (meta.status !== "lobby") {
-        failure = "Cannot leave from lobby after game starts.";
+        failure = "Nach Spielstart kann die Lobby nicht mehr verlassen werden.";
         return;
       }
 
@@ -442,7 +442,7 @@ export async function startGame(codeInput, uid) {
   const resolvedUid = await resolveUid(uid);
   const code = sanitizeJoinCode(codeInput);
   if (!code) {
-    throw new LobbyFlowError("invalid-join-code", "Missing join code.");
+    throw new LobbyFlowError("invalid-join-code", "Beitrittscode fehlt.");
   }
 
   let failure = "";
@@ -451,7 +451,7 @@ export async function startGame(codeInput, uid) {
   try {
     result = await transact(`games/${code}`, (current) => {
       if (!current) {
-        failure = "Lobby not found.";
+        failure = "Lobby nicht gefunden.";
         return;
       }
 
@@ -459,19 +459,19 @@ export async function startGame(codeInput, uid) {
       const players = current.players || {};
 
       if (meta.status !== "lobby") {
-        failure = "Game already started or finished.";
+        failure = "Spiel wurde bereits gestartet oder ist beendet.";
         return;
       }
 
       if (meta.hostUid !== resolvedUid) {
-        failure = "Only the host can start the game.";
+        failure = "Nur der Host kann das Spiel starten.";
         return;
       }
 
       const playerList = sortPlayersByJoin(players);
       const count = playerList.length;
       if (count < MIN_PLAYERS || count > MAX_PLAYERS) {
-        failure = "Game requires 2 to 4 players to start.";
+        failure = "Zum Starten werden 2 bis 4 Spieler benoetigt.";
         return;
       }
 
@@ -528,6 +528,7 @@ export async function startGame(codeInput, uid) {
     throw mapFirebaseError(error);
   }
 
-  ensureTransactionResult(result, failure || "Could not start game.");
+  ensureTransactionResult(result, failure || "Spiel konnte nicht gestartet werden.");
   return result.snapshot?.val() || null;
 }
+

@@ -23,7 +23,7 @@ export function renderLobbyPlayers(container, playersByUid, currentUid) {
   const players = Object.values(playersByUid || {}).sort((a, b) => Number(a.joinedAt || 0) - Number(b.joinedAt || 0));
 
   if (!players.length) {
-    container.innerHTML = '<li class="player-row"><span>No players yet.</span></li>';
+    container.innerHTML = '<li class="player-row"><span>Noch keine Spieler.</span></li>';
     return;
   }
 
@@ -39,7 +39,7 @@ export function renderLobbyPlayers(container, playersByUid, currentUid) {
         tags.push('<span class="host-tag">Host</span>');
       }
       if (player.uid === currentUid) {
-        tags.push('<span class="turn-tag">You</span>');
+        tags.push('<span class="turn-tag">Du</span>');
       }
       if (!player.connected) {
         tags.push('<span class="offline-tag">Offline</span>');
@@ -71,10 +71,10 @@ export function renderScoreboard(container, playersByUid, scoresByUid, currentPl
 
     const tags = [];
     if (uid === currentPlayerUid) {
-      tags.push('<span class="turn-tag">Current</span>');
+      tags.push('<span class="turn-tag">Aktuell</span>');
     }
     if (uid === currentUid) {
-      tags.push('<span class="host-tag">You</span>');
+      tags.push('<span class="host-tag">Du</span>');
     }
 
     return `
@@ -105,7 +105,7 @@ export function renderRack(container, rackTiles, selectedTileId, exchangeSelecti
   const exchangeSet = exchangeSelection || new Set();
 
   if (!rackTiles?.length) {
-    container.innerHTML = '<p class="muted">Rack empty.</p>';
+    container.innerHTML = '<p class="muted">Ablageständer leer.</p>';
     return;
   }
 
@@ -179,7 +179,7 @@ export function renderBoardGrid(
 export function buildResultSummary(playersByUid, standings, winnerUids) {
   if (!standings?.length) {
     return {
-      winnerLine: "No standings available.",
+      winnerLine: "Kein Endergebnis verfügbar.",
       rows: [],
     };
   }
@@ -190,8 +190,8 @@ export function buildResultSummary(playersByUid, standings, winnerUids) {
 
   const winnerLine =
     winnerNames.length > 1
-      ? `Tie winner: ${winnerNames.join(", ")}`
-      : `Winner: ${winnerNames[0] || standings[0].name}`;
+      ? `Geteilte Sieger: ${winnerNames.join(", ")}`
+      : `Sieger: ${winnerNames[0] || standings[0].name}`;
 
   return {
     winnerLine,

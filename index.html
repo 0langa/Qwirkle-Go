@@ -6,59 +6,59 @@
     <title>Qwirkle Go</title>
     <meta
       name="description"
-      content="Realtime multiplayer Qwirkle in the browser using Firebase Realtime Database."
+      content="Qwirkle als Live-Mehrspieler im Browser mit Firebase Realtime Database."
     />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <div id="app" class="app-shell">
-      <header class="top-header">
+      <header id="top-header" class="top-header">
         <div>
           <h1>Qwirkle Go</h1>
-          <p class="subtitle">Live multiplayer Qwirkle for honest casual play</p>
+          <p class="subtitle">Live-Mehrspieler-Qwirkle für ehrliches, entspanntes Spielen</p>
         </div>
-        <div id="connection-pill" class="pill neutral">Booting...</div>
+        <div id="connection-pill" class="pill neutral">Wird gestartet...</div>
       </header>
 
       <main>
         <section id="setup-screen" class="screen hidden" aria-live="polite">
           <div class="card narrow">
-            <h2>Firebase Setup Required</h2>
+            <h2>Firebase-Setup erforderlich</h2>
             <p>
-              This app needs Firebase config before it can connect to multiplayer services.
+              Diese App benötigt eine Firebase-Konfiguration, bevor der Mehrspieler-Modus genutzt werden kann.
             </p>
             <ol>
-              <li>Copy <code>src/firebase-config.example.js</code> to <code>src/firebase-config.js</code>.</li>
-              <li>Paste your Firebase Web App config values.</li>
-              <li>Enable Anonymous Authentication in Firebase Auth.</li>
-              <li>Create a Realtime Database and apply <code>database.rules.json</code>.</li>
-              <li>Reload or redeploy after saving config.</li>
+              <li>Kopiere <code>src/firebase-config.example.js</code> nach <code>src/firebase-config.js</code>.</li>
+              <li>Trage deine Firebase-Web-App-Konfigurationswerte ein.</li>
+              <li>Aktiviere anonyme Authentifizierung in Firebase Auth.</li>
+              <li>Erstelle eine Realtime Database und wende <code>database.rules.json</code> an.</li>
+              <li>Lade die App neu oder deploye erneut.</li>
             </ol>
             <p class="muted">
-              If this is deployed on Vercel, commit <code>src/firebase-config.js</code> with your project values.
+              Bei Deployment auf Vercel: Committe <code>src/firebase-config.js</code> mit den Werten deines Projekts.
             </p>
           </div>
         </section>
 
         <section id="landing-screen" class="screen hidden" aria-live="polite">
           <div class="card narrow">
-            <h2>Start or Join a Match</h2>
-            <label for="display-name-input">Display Name</label>
+            <h2>Spiel starten oder beitreten</h2>
+            <label for="display-name-input">Anzeigename</label>
             <input
               id="display-name-input"
               type="text"
               maxlength="24"
               autocomplete="nickname"
-              placeholder="Your name"
+              placeholder="Dein Name"
             />
 
             <div class="grid-two">
-              <button id="create-game-btn" class="primary">Create New Game</button>
-              <button id="join-game-btn" class="secondary">Join Game</button>
+              <button id="create-game-btn" class="primary">Neues Spiel erstellen</button>
+              <button id="join-game-btn" class="secondary">Spiel beitreten</button>
             </div>
 
-            <label for="join-code-input">Join Code</label>
+            <label for="join-code-input">Beitrittscode</label>
             <input
               id="join-code-input"
               type="text"
@@ -70,7 +70,7 @@
 
             <p id="landing-message" class="message" aria-live="polite"></p>
             <p class="muted tiny">
-              Unofficial fan-made implementation. Qwirkle is a registered trademark of MindWare.
+              Inoffizielle Fan-Implementierung. Qwirkle ist eine eingetragene Marke von MindWare.
             </p>
           </div>
         </section>
@@ -80,18 +80,18 @@
             <div class="lobby-head">
               <div>
                 <h2>Lobby <span id="lobby-code" class="code-pill">-----</span></h2>
-                <p id="lobby-count" class="muted">0 / 4 players</p>
+                <p id="lobby-count" class="muted">0 / 4 Spieler</p>
               </div>
               <div class="lobby-actions">
-                <button id="copy-code-btn" class="secondary">Copy Code</button>
-                <button id="leave-lobby-btn" class="danger">Leave Lobby</button>
+                <button id="copy-code-btn" class="secondary">Code kopieren</button>
+                <button id="leave-lobby-btn" class="danger">Lobby verlassen</button>
               </div>
             </div>
 
             <ul id="lobby-players" class="player-list"></ul>
 
             <div class="row-end">
-              <button id="start-game-btn" class="primary">Start Game Now</button>
+              <button id="start-game-btn" class="primary">Spiel jetzt starten</button>
             </div>
 
             <p id="lobby-message" class="message" aria-live="polite"></p>
@@ -99,48 +99,48 @@
         </section>
 
         <section id="game-screen" class="screen hidden" aria-live="polite">
+          <section class="card">
+            <h3>Dein Ablageständer</h3>
+            <p class="muted tiny">
+              Normalmodus: Klicke ein Teil zum Platzieren. Tauschmodus: Markiere ein oder mehrere Teile zum Tauschen.
+            </p>
+            <div id="rack" class="rack" aria-label="Ablageständer des Spielers"></div>
+          </section>
+
           <div class="game-layout">
             <aside class="side-panel card">
               <div class="game-meta">
                 <p><strong>Code:</strong> <span id="game-code">-----</span></p>
-                <p><strong>Bag:</strong> <span id="bag-count">0</span></p>
-                <p><strong>Turn:</strong> <span id="turn-indicator">-</span></p>
+                <p><strong>Beutel:</strong> <span id="bag-count">0</span></p>
+                <p><strong>Zug:</strong> <span id="turn-indicator">-</span></p>
                 <p><strong>Status:</strong> <span id="game-status">-</span></p>
               </div>
 
-              <h3>Scoreboard</h3>
+              <h3>Punktestand</h3>
               <ul id="scoreboard" class="score-list"></ul>
 
-              <h3>Move Actions</h3>
+              <h3>Zug-Aktionen</h3>
               <div class="action-grid">
-                <button id="commit-move-btn" class="primary">Commit Move</button>
-                <button id="undo-placement-btn" class="secondary">Undo Last Placement</button>
-                <button id="cancel-turn-btn" class="secondary">Cancel Turn</button>
-                <button id="exchange-mode-btn" class="secondary">Exchange Mode: Off</button>
-                <button id="exchange-selected-btn" class="secondary">Exchange Selected</button>
-                <button id="pass-turn-btn" class="danger">Pass Turn</button>
-                <button id="dev-delete-game-btn" class="danger">Dev: Delete Game</button>
+                <button id="commit-move-btn" class="primary">Zug bestätigen</button>
+                <button id="undo-placement-btn" class="secondary">Letzte Platzierung rückgängig</button>
+                <button id="cancel-turn-btn" class="secondary">Zug abbrechen</button>
+                <button id="exchange-mode-btn" class="secondary">Tauschmodus: Aus</button>
+                <button id="exchange-selected-btn" class="secondary">Ausgewählte tauschen</button>
+                <button id="pass-turn-btn" class="danger">Passen</button>
+                <button id="dev-delete-game-btn" class="danger">Dev: Spiel löschen</button>
               </div>
 
               <p id="game-message" class="message" aria-live="polite"></p>
             </aside>
 
             <section class="board-panel card">
-              <h3>Board</h3>
-              <p class="muted tiny">Select a rack tile, then click an empty board cell to place it tentatively.</p>
+              <h3>Spielfeld</h3>
+              <p class="muted tiny">Wähle ein Teil aus dem Ablageständer und klicke auf ein leeres Feld.</p>
               <div id="board-scroll" class="board-scroll">
-                <div id="board-grid" class="board-grid" role="grid" aria-label="Qwirkle board"></div>
+                <div id="board-grid" class="board-grid" role="grid" aria-label="Qwirkle Spielfeld"></div>
               </div>
             </section>
           </div>
-
-          <section class="card">
-            <h3>Your Rack</h3>
-            <p class="muted tiny">
-              Normal mode: click one tile to place. Exchange mode: click one or more tiles to mark for exchange.
-            </p>
-            <div id="rack" class="rack" aria-label="Player rack"></div>
-          </section>
         </section>
       </main>
     </div>
@@ -148,11 +148,11 @@
     <template id="result-dialog-template">
       <div class="result-overlay" role="dialog" aria-modal="true">
         <div class="card narrow">
-          <h2>Game Over</h2>
+          <h2>Spiel beendet</h2>
           <p id="result-winner-line"></p>
           <ol id="result-standings"></ol>
           <div class="row-end">
-            <button id="result-close-btn" class="primary">Back To Landing</button>
+            <button id="result-close-btn" class="primary">Zurück zur Startseite</button>
           </div>
         </div>
       </div>

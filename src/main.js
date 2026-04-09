@@ -1,10 +1,10 @@
 import { startApp } from "./app.js";
 
 startApp().catch((error) => {
-  const message = error?.message || "Unexpected startup error.";
+  const message = error?.message || "Unerwarteter Startfehler.";
   const pill = document.getElementById("connection-pill");
   if (pill) {
-    pill.textContent = "Startup error";
+    pill.textContent = "Startfehler";
     pill.className = "pill bad";
   }
 
@@ -25,3 +25,4 @@ startApp().catch((error) => {
 
   console.error(error);
 });
+

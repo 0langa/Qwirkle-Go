@@ -77,15 +77,15 @@ function addHistoryEntry(game, entry) {
 
 function getGameAndMeta(current, failureRef) {
   if (!current) {
-    failureRef.value = "Game not found.";
+    failureRef.value = "Spiel nicht gefunden.";
     return null;
   }
   if (!current.meta || !current.game) {
-    failureRef.value = "Game state is missing.";
+    failureRef.value = "Spielstatus fehlt.";
     return null;
   }
   if (current.meta.status !== "in_progress") {
-    failureRef.value = "This game is not active.";
+    failureRef.value = "Dieses Spiel ist nicht aktiv.";
     return null;
   }
   return current;
@@ -94,14 +94,14 @@ function getGameAndMeta(current, failureRef) {
 export async function commitMove(codeInput, uid, draftPlacements) {
   const code = sanitizeJoinCode(codeInput);
   if (!code) {
-    throw new Error("Missing game code.");
+    throw new Error("Spielcode fehlt.");
   }
 
   if (!Array.isArray(draftPlacements) || draftPlacements.length === 0) {
-    throw new Error("No tiles selected for this move.");
+    throw new Error("Keine Teile fuer diesen Zug ausgewaehlt.");
   }
 
-  const failure = { value: "Could not commit move." };
+  const failure = { value: "Zug konnte nicht bestaetigt werden." };
 
   const result = await transact(`games/${code}`, (current) => {
     const state = getGameAndMeta(current, failure);
@@ -111,14 +111,14 @@ export async function commitMove(codeInput, uid, draftPlacements) {
 
     const game = state.game;
     if (game.currentPlayerUid !== uid) {
-      failure.value = "It is not your turn.";
+      failure.value = "Du bist nicht am Zug.";
       return;
     }
 
     const rack = game.racks?.[uid] || [];
     const tileIds = draftPlacements.map((item) => item.tileId);
     if (!ensureRackContains(rack, tileIds)) {
-      failure.value = "One or more selected tiles are no longer in your rack.";
+      failure.value = "Ein oder mehrere ausgewaehlte Teile sind nicht mehr in deinem Ablagestaender.";
       return;
     }
 
@@ -137,7 +137,7 @@ export async function commitMove(codeInput, uid, draftPlacements) {
     if (isOpeningMove && opening && opening.uid === uid && Array.isArray(opening.allowedGroups)) {
       const signature = [...tileIds].sort().join("|");
       if (!opening.allowedGroups.includes(signature)) {
-        failure.value = "Opening move must use one of your largest opening groups.";
+        failure.value = "Der Eroeffnungszug muss eine deiner groessten Eroeffnungsgruppen nutzen.";
         return;
       }
     }
@@ -209,14 +209,14 @@ export async function exchangeTiles(codeInput, uid, selectedTileIds) {
   const ids = [...new Set(selectedTileIds || [])];
 
   if (!code) {
-    throw new Error("Missing game code.");
+    throw new Error("Spielcode fehlt.");
   }
 
   if (!ids.length) {
-    throw new Error("Select at least one tile to exchange.");
+    throw new Error("Waehle mindestens ein Teil zum Tauschen aus.");
   }
 
-  const failure = { value: "Could not exchange tiles." };
+  const failure = { value: "Teile konnten nicht getauscht werden." };
 
   const result = await transact(`games/${code}`, (current) => {
     const state = getGameAndMeta(current, failure);
@@ -226,18 +226,18 @@ export async function exchangeTiles(codeInput, uid, selectedTileIds) {
 
     const game = state.game;
     if (game.currentPlayerUid !== uid) {
-      failure.value = "It is not your turn.";
+      failure.value = "Du bist nicht am Zug.";
       return;
     }
 
     const rack = game.racks?.[uid] || [];
     if (!ensureRackContains(rack, ids)) {
-      failure.value = "Selected tiles are no longer in your rack.";
+      failure.value = "Ausgewaehlte Teile sind nicht mehr in deinem Ablagestaender.";
       return;
     }
 
     if (!isExchangeLegal((game.bag || []).length, ids.length)) {
-      failure.value = "Exchange is only legal when the bag has at least that many tiles.";
+      failure.value = "Tauschen ist nur erlaubt, wenn der Beutel mindestens so viele Teile enthaelt.";
       return;
     }
 
@@ -274,10 +274,10 @@ export async function exchangeTiles(codeInput, uid, selectedTileIds) {
 export async function passTurn(codeInput, uid) {
   const code = sanitizeJoinCode(codeInput);
   if (!code) {
-    throw new Error("Missing game code.");
+    throw new Error("Spielcode fehlt.");
   }
 
-  const failure = { value: "Could not pass turn." };
+  const failure = { value: "Passen war nicht moeglich." };
 
   const result = await transact(`games/${code}`, (current) => {
     const state = getGameAndMeta(current, failure);
@@ -287,14 +287,14 @@ export async function passTurn(codeInput, uid) {
 
     const game = state.game;
     if (game.currentPlayerUid !== uid) {
-      failure.value = "It is not your turn.";
+      failure.value = "Du bist nicht am Zug.";
       return;
     }
 
     const openingBlocked =
       Object.keys(game.board || {}).length === 0 && game.openingRequirement?.uid === uid;
     if (openingBlocked) {
-      failure.value = "Opening player must place one of the required opening groups.";
+      failure.value = "Der Startspieler muss eine der erforderlichen Eroeffnungsgruppen legen.";
       return;
     }
 
@@ -322,3 +322,4 @@ export async function passTurn(codeInput, uid) {
     throw new Error(failure.value);
   }
 }
+

@@ -3,6 +3,7 @@ const SCREEN_IDS = ["setup-screen", "landing-screen", "lobby-screen", "game-scre
 export function createUi() {
   const elements = {
     connectionPill: document.getElementById("connection-pill"),
+    topHeader: document.getElementById("top-header"),
 
     setupScreen: document.getElementById("setup-screen"),
     landingScreen: document.getElementById("landing-screen"),
@@ -52,6 +53,9 @@ export function createUi() {
         continue;
       }
       node.classList.toggle("hidden", id !== screenId);
+    }
+    if (elements.topHeader) {
+      elements.topHeader.classList.toggle("hidden", screenId === "game-screen");
     }
   }
 

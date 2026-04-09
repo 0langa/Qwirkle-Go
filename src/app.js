@@ -63,37 +63,37 @@ function toUiErrorMessage(error) {
   const code = toCode(error);
 
   if (code === "game-not-found") {
-    return "Game not found. Check the join code and try again.";
+    return "Spiel nicht gefunden. Bitte prüfe den Beitrittscode und versuche es erneut.";
   }
   if (code === "auth-not-ready") {
-    return "Authentication is still initializing. Please wait and try again.";
+    return "Authentifizierung wird noch initialisiert. Bitte kurz warten und erneut versuchen.";
   }
   if (code === "permission-denied") {
-    return "Permission denied by Firebase rules. Verify auth and database rules.";
+    return "Zugriff durch Firebase-Regeln verweigert. Prüfe Authentifizierung und Datenbankregeln.";
   }
   if (code === "invalid-lobby-data") {
-    return "Lobby data is invalid. Ask the host to create a new game.";
+    return "Lobby-Daten sind ungültig. Bitte den Host, ein neues Spiel zu erstellen.";
   }
   if (code === "network-error") {
-    return "Network/database error while contacting Firebase. Try again.";
+    return "Netzwerk-/Datenbankfehler beim Zugriff auf Firebase. Bitte erneut versuchen.";
   }
   if (code === "firebase-error") {
-    return "Unexpected Firebase error. Check console diagnostics and database setup.";
+    return "Unerwarteter Firebase-Fehler. Prüfe Konsole und Datenbank-Setup.";
   }
   if (code === "invalid-join-code") {
-    return "Enter a valid join code.";
+    return "Bitte einen gültigen Beitrittscode eingeben.";
   }
   if (code === "game-already-started") {
-    return "That game already started.";
+    return "Dieses Spiel wurde bereits gestartet.";
   }
   if (code === "game-finished") {
-    return "That game already finished.";
+    return "Dieses Spiel ist bereits beendet.";
   }
   if (code === "lobby-full") {
-    return "Lobby is full (4 players).";
+    return "Die Lobby ist voll (4 Spieler).";
   }
 
-  return error?.message || "Unexpected error.";
+  return error?.message || "Unerwarteter Fehler.";
 }
 
 async function ensureActionAuthUid() {
@@ -103,7 +103,7 @@ async function ensureActionAuthUid() {
   const user = await ensureAuthReady();
   authUid = user?.uid || null;
   if (!authUid) {
-    const error = new Error("Authentication is still initializing.");
+    const error = new Error("Authentifizierung wird noch initialisiert.");
     error.code = "auth-not-ready";
     throw error;
   }
@@ -192,7 +192,7 @@ function updateActionButtonState() {
   ui.elements.passTurnBtn.disabled = actionBusy || !inProgress || !isMyTurn || hasTentative;
   ui.elements.devDeleteGameBtn.disabled = actionBusy || !activeCode;
 
-  ui.elements.exchangeModeBtn.textContent = `Exchange Mode: ${state.exchangeMode ? "On" : "Off"}`;
+  ui.elements.exchangeModeBtn.textContent = `Tauschmodus: ${state.exchangeMode ? "An" : "Aus"}`;
 }
 
 function refreshCurrentGameView() {
@@ -215,22 +215,22 @@ function renderLobby(snapshot) {
   const me = players[authUid];
 
   ui.elements.lobbyCode.textContent = meta.joinCode || "-----";
-  ui.elements.lobbyCount.textContent = `${playerCount} / 4 players`;
+  ui.elements.lobbyCount.textContent = `${playerCount} / 4 Spieler`;
   renderLobbyPlayers(ui.elements.lobbyPlayers, players, authUid);
 
   const host = meta.hostUid === authUid;
   ui.elements.startGameBtn.disabled = !host || playerCount < 2 || playerCount > 4 || actionBusy;
   ui.elements.startGameBtn.title = host
-    ? "Start when 2-4 players are present"
-    : "Only host can start";
+    ? "Starten, wenn 2-4 Spieler anwesend sind"
+    : "Nur der Host kann starten";
 
   if (!me) {
-    openLanding("You are no longer in this lobby.", "error");
+    openLanding("Du bist nicht mehr in dieser Lobby.", "error");
     return;
   }
 
   ui.showScreen("lobby-screen");
-  setLobbyMessage(host ? "You are the host. Start when everyone is ready." : "Waiting for host to start.");
+  setLobbyMessage(host ? "Du bist Host. Starte, wenn alle bereit sind." : "Warte auf den Host zum Starten.");
 }
 
 function clearDraftIfOutdated(snapshot) {
@@ -258,7 +258,7 @@ function renderGame(snapshot) {
   ui.elements.bagCount.textContent = String((game.bag || []).length);
   ui.elements.turnIndicator.textContent = players?.[game.currentPlayerUid]?.name || "-";
   ui.elements.gameStatus.textContent =
-    meta.status === "finished" ? "Finished" : isMyTurn ? "Your turn" : "Waiting";
+    meta.status === "finished" ? "Beendet" : isMyTurn ? "Du bist dran" : "Warten";
 
   renderScoreboard(
     ui.elements.scoreboard,
@@ -284,7 +284,7 @@ function renderGame(snapshot) {
   );
 
   if (meta.status === "in_progress") {
-    setGameMessage(isMyTurn ? "Your turn: place tiles, exchange, or pass." : "Waiting for the current player.");
+    setGameMessage(isMyTurn ? "Du bist dran: Teile legen, tauschen oder passen." : "Warte auf den aktuellen Spieler.");
   }
 
   ui.showScreen("game-screen");
@@ -297,7 +297,7 @@ function renderGame(snapshot) {
       ui.showResultDialog(summary, () => {
         clearSession();
         dropGameSubscription();
-        openLanding("Game complete. Start a new match whenever you like.", "success");
+        openLanding("Spiel abgeschlossen. Du kannst jederzeit eine neue Runde starten.", "success");
       });
     }
   } else {
@@ -318,7 +318,7 @@ function renderBySnapshot(snapshot) {
   if (!me) {
     clearSession();
     dropGameSubscription();
-    openLanding("You are not a participant in that game anymore.", "error");
+    openLanding("Du bist kein Teilnehmer dieses Spiels mehr.", "error");
     return;
   }
 
@@ -333,7 +333,7 @@ function renderBySnapshot(snapshot) {
 function bindGameSubscription(code) {
   const normalized = sanitizeJoinCode(code);
   if (!normalized) {
-    throw new Error("Invalid game code.");
+    throw new Error("Ungültiger Spielcode.");
   }
 
   dropGameSubscription();
@@ -352,7 +352,7 @@ function bindGameSubscription(code) {
       if (!value) {
         clearSession();
         dropGameSubscription();
-        openLanding("Game not found or removed.", "error");
+        openLanding("Spiel nicht gefunden oder bereits gelöscht.", "error");
         return;
       }
 
@@ -366,7 +366,7 @@ function bindGameSubscription(code) {
           await attachPresence(normalized, authUid);
           presenceCode = normalized;
         } catch (_error) {
-          setGameMessage("Presence sync failed. Realtime updates may be delayed.", "error");
+          setGameMessage("Präsenz-Synchronisierung fehlgeschlagen. Live-Updates können verzögert sein.", "error");
         }
       }
 
@@ -374,12 +374,12 @@ function bindGameSubscription(code) {
         return;
       }
 
-      ui.setConnectionState("Connected", "good");
+      ui.setConnectionState("Verbunden", "good");
       renderBySnapshot(value);
     },
     () => {
-      ui.setConnectionState("Connection issue", "bad");
-      setGameMessage("Realtime connection problem. Retrying...");
+      ui.setConnectionState("Verbindungsproblem", "bad");
+      setGameMessage("Live-Verbindung unterbrochen. Neuer Versuch...");
     }
   );
 }
@@ -394,7 +394,7 @@ async function handleCreateLobby() {
     const readyUid = await ensureActionAuthUid();
     const created = await createLobby(readyUid, name);
     bindGameSubscription(created.code);
-    setLobbyMessage("Lobby created. Share the join code.", "success");
+    setLobbyMessage("Lobby erstellt. Teile den Beitrittscode.", "success");
   } catch (error) {
     setLandingMessage(toUiErrorMessage(error), "error");
   } finally {
@@ -413,7 +413,7 @@ async function handleJoinLobby() {
     const readyUid = await ensureActionAuthUid();
     const joined = await joinLobby(code, readyUid, name);
     bindGameSubscription(joined.code);
-    setLobbyMessage("Joined lobby successfully.", "success");
+    setLobbyMessage("Lobby erfolgreich beigetreten.", "success");
   } catch (error) {
     setLandingMessage(toUiErrorMessage(error), "error");
   } finally {
@@ -438,7 +438,7 @@ async function handleLeaveLobby() {
     if (left) {
       clearSession();
       dropGameSubscription();
-      openLanding("You left the lobby.");
+      openLanding("Du hast die Lobby verlassen.");
     }
   }
 }
@@ -451,7 +451,7 @@ async function handleStartGame() {
   try {
     setBusy(true);
     await startGame(activeCode, authUid);
-    setLobbyMessage("Starting game...", "success");
+    setLobbyMessage("Spiel wird gestartet...", "success");
   } catch (error) {
     setLobbyMessage(error.message, "error");
   } finally {
@@ -527,24 +527,24 @@ function handleBoardClick(event) {
   }
 
   if (state.exchangeMode) {
-    setGameMessage("Turn off exchange mode to place tiles.", "error");
+    setGameMessage("Deaktiviere den Tauschmodus, um Teile zu platzieren.", "error");
     return;
   }
 
   const selectedTileId = state.selectedRackTileId;
   if (!selectedTileId) {
-    setGameMessage("Select a tile from your rack first.", "error");
+    setGameMessage("Bitte zuerst ein Teil aus dem Ablageständer auswählen.", "error");
     return;
   }
 
   if (rackTileAlreadyPlaced(selectedTileId)) {
-    setGameMessage("That tile is already placed this turn.", "error");
+    setGameMessage("Dieses Teil wurde in diesem Zug bereits platziert.", "error");
     return;
   }
 
   const tile = myRack().find((entry) => entry.id === selectedTileId);
   if (!tile) {
-    setGameMessage("Selected tile is no longer available.", "error");
+    setGameMessage("Das ausgewählte Teil ist nicht mehr verfügbar.", "error");
     setSelectedRackTile(null);
     return;
   }
@@ -574,7 +574,7 @@ function undoLastPlacement() {
 
 function cancelTurnDraft() {
   resetTurnDraft();
-  setGameMessage("Turn draft cleared.");
+  setGameMessage("Zugentwurf verworfen.");
   refreshCurrentGameView();
 }
 
@@ -584,7 +584,7 @@ async function handleCommitMove() {
   }
   const draft = getState().tentativePlacements;
   if (!draft.length) {
-    setGameMessage("Place at least one tile before committing.", "error");
+    setGameMessage("Platziere mindestens ein Teil, bevor du bestätigst.", "error");
     return;
   }
 
@@ -600,7 +600,7 @@ async function handleCommitMove() {
       }))
     );
     resetTurnDraft();
-    setGameMessage("Move committed.", "success");
+    setGameMessage("Zug bestätigt.", "success");
   } catch (error) {
     setGameMessage(error.message, "error");
   } finally {
@@ -611,7 +611,7 @@ async function handleCommitMove() {
 function toggleExchangeMode() {
   const state = getState();
   if (state.tentativePlacements.length > 0) {
-    setGameMessage("Commit or cancel your tentative move before exchanging.", "error");
+    setGameMessage("Bestätige oder verwerfe zuerst deinen platzierten Zug.", "error");
     return;
   }
   setExchangeMode(!state.exchangeMode);
@@ -629,13 +629,13 @@ async function handleExchangeSelected() {
 
   const state = getState();
   if (!state.exchangeMode) {
-    setGameMessage("Enable exchange mode first.", "error");
+    setGameMessage("Aktiviere zuerst den Tauschmodus.", "error");
     return;
   }
 
   const selected = [...state.exchangeSelection];
   if (!selected.length) {
-    setGameMessage("Select at least one tile for exchange.", "error");
+    setGameMessage("Wähle mindestens ein Teil zum Tauschen aus.", "error");
     return;
   }
 
@@ -643,7 +643,7 @@ async function handleExchangeSelected() {
     setBusy(true);
     await exchangeTiles(activeCode, authUid, selected);
     resetTurnDraft();
-    setGameMessage("Tiles exchanged.", "success");
+    setGameMessage("Teile wurden getauscht.", "success");
   } catch (error) {
     setGameMessage(error.message, "error");
   } finally {
@@ -657,11 +657,11 @@ async function handlePassTurn() {
   }
 
   if (getState().tentativePlacements.length > 0) {
-    setGameMessage("Commit or cancel your tentative placements before passing.", "error");
+    setGameMessage("Bestätige oder verwerfe zuerst deine vorläufigen Platzierungen.", "error");
     return;
   }
 
-  const confirmed = window.confirm("Pass your turn?");
+  const confirmed = window.confirm("Möchtest du deinen Zug passen?");
   if (!confirmed) {
     return;
   }
@@ -670,7 +670,7 @@ async function handlePassTurn() {
     setBusy(true);
     await passTurn(activeCode, authUid);
     resetTurnDraft();
-    setGameMessage("Turn passed.", "success");
+    setGameMessage("Zug gepasst.", "success");
   } catch (error) {
     setGameMessage(error.message, "error");
   } finally {
@@ -680,12 +680,12 @@ async function handlePassTurn() {
 
 async function handleDevDeleteGame() {
   if (!activeCode) {
-    setGameMessage("No active game to delete.", "error");
+    setGameMessage("Kein aktives Spiel zum Löschen vorhanden.", "error");
     return;
   }
 
   const code = activeCode;
-  const confirmed = window.confirm(`Delete game ${code} from Firebase now?`);
+  const confirmed = window.confirm(`Spiel ${code} jetzt aus Firebase löschen?`);
   if (!confirmed) {
     return;
   }
@@ -696,7 +696,7 @@ async function handleDevDeleteGame() {
     await write(`games/${code}`, null);
     clearSession();
     dropGameSubscription();
-    openLanding(`Deleted game ${code} (dev reset).`, "success");
+    openLanding(`Spiel ${code} gelöscht (Dev-Reset).`, "success");
   } catch (error) {
     setGameMessage(toUiErrorMessage(error), "error");
   } finally {
@@ -712,9 +712,9 @@ async function copyJoinCode() {
 
   try {
     await navigator.clipboard.writeText(code);
-    setLobbyMessage("Join code copied.", "success");
+    setLobbyMessage("Beitrittscode kopiert.", "success");
   } catch (_error) {
-    setLobbyMessage(`Copy failed. Share this code manually: ${code}`, "error");
+    setLobbyMessage(`Kopieren fehlgeschlagen. Teile den Code manuell: ${code}`, "error");
   }
 }
 
@@ -790,11 +790,11 @@ export async function startApp() {
   ui.elements.joinGameBtn.disabled = true;
 
   ui.showScreen("landing-screen");
-  ui.setConnectionState("Connecting...", "neutral");
+  ui.setConnectionState("Verbinde...", "neutral");
 
   const bootstrap = await bootstrapFirebase();
   if (!bootstrap.ok) {
-    ui.setConnectionState("Firebase config missing", "bad");
+    ui.setConnectionState("Firebase-Konfiguration fehlt", "bad");
     ui.showScreen("setup-screen");
     return;
   }
@@ -805,7 +805,7 @@ export async function startApp() {
     authUid = user.uid;
   }
 
-  ui.setConnectionState("Connected", "good");
+  ui.setConnectionState("Verbunden", "good");
   ui.elements.displayNameInput.disabled = false;
   ui.elements.joinCodeInput.disabled = false;
   ui.elements.createGameBtn.disabled = false;
@@ -813,7 +813,7 @@ export async function startApp() {
 
   const resumed = await tryResumeSession();
   if (!resumed) {
-    openLanding("Create a lobby or join with a code.");
+    openLanding("Erstelle eine Lobby oder tritt mit einem Code bei.");
   }
 
   updateActionButtonState();

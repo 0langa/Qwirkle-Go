@@ -219,21 +219,21 @@ export function validateMove(boardMap, placements, options = {}) {
   const boardIsEmpty = Object.keys(baseBoard).length === 0;
 
   if (!Array.isArray(placements) || placements.length === 0) {
-    return { valid: false, reason: "Place at least one tile." };
+    return { valid: false, reason: "Lege mindestens ein Teil." };
   }
 
   if (!isOpeningMove && boardIsEmpty) {
-    return { valid: false, reason: "Opening move is required before regular turns." };
+    return { valid: false, reason: "Vor regulaeren Zuegen ist ein Eroeffnungszug erforderlich." };
   }
 
   if (isOpeningMove && !boardIsEmpty) {
-    return { valid: false, reason: "Opening move can only be played on an empty board." };
+    return { valid: false, reason: "Ein Eroeffnungszug ist nur auf einem leeren Spielfeld erlaubt." };
   }
 
   if (isOpeningMove && requiredOpeningSize > 0 && placements.length !== requiredOpeningSize) {
     return {
       valid: false,
-      reason: `Opening move must place exactly ${requiredOpeningSize} tile(s).`,
+      reason: `Der Eroeffnungszug muss genau ${requiredOpeningSize} Teil(e) legen.`,
     };
   }
 
@@ -241,22 +241,22 @@ export function validateMove(boardMap, placements, options = {}) {
   const tileIdSet = new Set();
   for (const placement of placements) {
     if (!Number.isInteger(placement.x) || !Number.isInteger(placement.y)) {
-      return { valid: false, reason: "Invalid board coordinate." };
+      return { valid: false, reason: "Ungueltige Spielfeldkoordinate." };
     }
     const key = coordinateKey(placement.x, placement.y);
     if (coordSet.has(key)) {
-      return { valid: false, reason: "Cannot place two tiles on the same cell." };
+      return { valid: false, reason: "Es koennen nicht zwei Teile auf dasselbe Feld gelegt werden." };
     }
     if (tileAt(baseBoard, placement.x, placement.y)) {
-      return { valid: false, reason: "Cannot place on an occupied cell." };
+      return { valid: false, reason: "Auf ein belegtes Feld kann nicht gelegt werden." };
     }
     coordSet.add(key);
 
     if (!placement.tile || !placement.tile.id) {
-      return { valid: false, reason: "Missing tile details." };
+      return { valid: false, reason: "Teildetails fehlen." };
     }
     if (tileIdSet.has(placement.tile.id)) {
-      return { valid: false, reason: "Cannot place the same tile twice." };
+      return { valid: false, reason: "Dasselbe Teil kann nicht zweimal gelegt werden." };
     }
     tileIdSet.add(placement.tile.id);
   }
@@ -265,7 +265,7 @@ export function validateMove(boardMap, placements, options = {}) {
   const sameY = placements.every((entry) => entry.y === placements[0].y);
 
   if (!sameX && !sameY) {
-    return { valid: false, reason: "All placed tiles must be in one row or one column." };
+    return { valid: false, reason: "Alle gelegten Teile muessen in einer Reihe oder Spalte liegen." };
   }
 
   const orientation = sameX ? "vertical" : "horizontal";
@@ -281,7 +281,7 @@ export function validateMove(boardMap, placements, options = {}) {
       const y = sameX ? value : fixed;
       const key = coordinateKey(x, y);
       if (!baseBoard[key] && !coordSet.has(key)) {
-        return { valid: false, reason: "Placed tiles must form a contiguous line without gaps." };
+        return { valid: false, reason: "Gelegte Teile muessen eine durchgaengige Linie ohne Luecken bilden." };
       }
     }
   }
@@ -291,7 +291,7 @@ export function validateMove(boardMap, placements, options = {}) {
       hasExistingNeighbor(baseBoard, entry.x, entry.y)
     );
     if (!touchesExisting) {
-      return { valid: false, reason: "Move must connect to the existing board." };
+      return { valid: false, reason: "Der Zug muss mit dem vorhandenen Spielfeld verbunden sein." };
     }
   }
 
@@ -303,7 +303,7 @@ export function validateMove(boardMap, placements, options = {}) {
   const lines = collectAffectedLines(boardAfter, placements);
   for (const line of lines) {
     if (!isValidLineTiles(line.tiles)) {
-      return { valid: false, reason: "Move creates an invalid line." };
+      return { valid: false, reason: "Der Zug erzeugt eine ungueltige Linie." };
     }
   }
 
@@ -408,3 +408,4 @@ export function lineTilesAt(boardMap, x, y, axis = "horizontal") {
 export function boardCoordinates(boardMap) {
   return Object.keys(boardMap || {}).map(parseCoordinateKey);
 }
+
