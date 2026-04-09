@@ -4,69 +4,8 @@
     ".write": false,
     "games": {
       "$code": {
-        ".read": "auth != null && (data.child('players').child(auth.uid).exists() || data.child('meta').child('status').val() == 'lobby')",
-        ".write": "auth != null && ((!data.exists() && newData.child('meta').child('hostUid').val() == auth.uid && newData.child('players').child(auth.uid).exists()) || (data.exists() && data.child('meta').child('status').val() != 'finished' && (data.child('players').child(auth.uid).exists() || (data.child('meta').child('status').val() == 'lobby' && !data.child('players').child(auth.uid).exists() && newData.child('players').child(auth.uid).exists() && newData.child('meta').child('status').val() == 'lobby')) && (data.child('meta').child('status').val() != 'lobby' || newData.child('meta').child('status').val() != 'in_progress' || data.child('meta').child('hostUid').val() == auth.uid)))",
-        "meta": {
-          "joinCode": {
-            ".validate": "newData.isString() && newData.val().matches(/^[A-Z0-9]{4,8}$/) && (!data.exists() || newData.val() == data.val())"
-          },
-          "status": {
-            ".validate": "newData.val() == 'lobby' || newData.val() == 'in_progress' || newData.val() == 'finished'"
-          },
-          "hostUid": {
-            ".validate": "newData.isString() && newData.val().length > 0"
-          },
-          "createdAt": {
-            ".validate": "newData.isNumber()"
-          },
-          "startedAt": {
-            ".validate": "newData.isNumber() || !newData.exists()"
-          },
-          "endedAt": {
-            ".validate": "newData.isNumber() || !newData.exists()"
-          },
-          "revision": {
-            ".validate": "newData.isNumber() && newData.val() >= 1"
-          },
-          "maxPlayers": {
-            ".validate": "newData.isNumber() && newData.val() == 4"
-          },
-          "$other": {
-            ".validate": false
-          }
-        },
-        "players": {
-          ".validate": "newData.exists()",
-          "$uid": {
-            "uid": {
-              ".validate": "newData.val() == $uid"
-            },
-            "name": {
-              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 24"
-            },
-            "joinedAt": {
-              ".validate": "newData.isNumber()"
-            },
-            "connected": {
-              ".validate": "newData.isBoolean()"
-            },
-            "isHost": {
-              ".validate": "newData.isBoolean()"
-            },
-            "lastSeenAt": {
-              ".validate": "newData.isNumber() || !newData.exists()"
-            },
-            "$other": {
-              ".validate": false
-            }
-          }
-        },
-        "game": {
-          ".validate": "newData.hasChildren(['board', 'bag', 'racks', 'scores', 'turnOrder', 'currentPlayerUid']) || !newData.exists()",
-          "$other": {
-            ".validate": true
-          }
-        }
+        ".read": "auth != null",
+        ".write": "auth != null && $code.matches(/^[A-Z0-9]{4,8}$/)"
       }
     }
   }
