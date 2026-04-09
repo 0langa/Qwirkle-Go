@@ -155,6 +155,13 @@ function logJoinDebug(stage, payload) {
   console.debug(`[join-flow] ${stage}`, payload);
 }
 
+function deepClone(value) {
+  if (typeof structuredClone === "function") {
+    return structuredClone(value);
+  }
+  return JSON.parse(JSON.stringify(value));
+}
+
 export async function createLobby(uid, displayName) {
   const resolvedUid = await resolveUid(uid);
   const name = sanitizeDisplayName(displayName);
@@ -263,10 +270,23 @@ export async function joinLobby(codeInput, uid, displayName) {
     message: "Could not join lobby.",
   };
 
+  let usedSnapshotFallback = false;
   let result;
   try {
     result = await transact(path, (current) => {
-      if (!current) {
+      const base =
+        current ||
+        (!usedSnapshotFallback && lobbyData ? deepClone(lobbyData) : null);
+
+      if (!current && !usedSnapshotFallback && base) {
+        usedSnapshotFallback = true;
+        logJoinDebug("transaction-null-current-fallback", {
+          normalizedCode,
+          usedSnapshotFallback,
+        });
+      }
+
+      if (!base) {
         failure = {
           code: "lobby-unavailable",
           message: "Lobby was closed before you could join.",
@@ -274,7 +294,7 @@ export async function joinLobby(codeInput, uid, displayName) {
         return;
       }
 
-      if (!validateLobbyShape(current)) {
+      if (!validateLobbyShape(base)) {
         failure = {
           code: "invalid-lobby-data",
           message: "Lobby data is malformed.",
@@ -282,8 +302,8 @@ export async function joinLobby(codeInput, uid, displayName) {
         return;
       }
 
-      const meta = current.meta || {};
-      const players = current.players || {};
+      const meta = base.meta || {};
+      const players = base.players || {};
 
       if (meta.status === "in_progress") {
         failure = {
@@ -322,17 +342,17 @@ export async function joinLobby(codeInput, uid, displayName) {
       const joinedAt = players[resolvedUid]?.joinedAt || nowMs();
       const isHost = meta.hostUid === resolvedUid;
 
-      current.players = {
+      base.players = {
         ...players,
         [resolvedUid]: createPlayer(resolvedUid, name, isHost, joinedAt),
       };
 
-      current.meta = {
+      base.meta = {
         ...meta,
         revision: nextRevision(meta),
       };
 
-      return current;
+      return base;
     });
   } catch (error) {
     logJoinDebug("transaction-error", {
