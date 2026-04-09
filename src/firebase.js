@@ -95,6 +95,24 @@ export function getAuthUser() {
   return runtime.auth?.currentUser || null;
 }
 
+export async function ensureAuthReady() {
+  if (!runtime.auth) {
+    throw new Error("Firebase auth is not initialized.");
+  }
+
+  if (runtime.auth.currentUser) {
+    return runtime.auth.currentUser;
+  }
+
+  try {
+    await signInAnonymously(runtime.auth);
+  } catch (_error) {
+    // If another sign-in process is already in progress, wait for auth state.
+  }
+
+  return waitForAuthUser();
+}
+
 export function subscribe(path, onNext, onError) {
   return onValue(ref(runtime.db, path), onNext, onError);
 }

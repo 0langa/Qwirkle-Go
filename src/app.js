@@ -2,6 +2,7 @@ import {
   attachPresence,
   bootstrapFirebase,
   detachPresence,
+  ensureAuthReady,
   getAuthUser,
   subscribe,
   waitForAuthUser,
@@ -51,6 +52,61 @@ let presenceCode = null;
 function setBusy(value) {
   actionBusy = Boolean(value);
   updateActionButtonState();
+}
+
+function toCode(error) {
+  return String(error?.code || "").toLowerCase();
+}
+
+function toUiErrorMessage(error) {
+  const code = toCode(error);
+
+  if (code === "game-not-found") {
+    return "Game not found. Check the join code and try again.";
+  }
+  if (code === "auth-not-ready") {
+    return "Authentication is still initializing. Please wait and try again.";
+  }
+  if (code === "permission-denied") {
+    return "Permission denied by Firebase rules. Verify auth and database rules.";
+  }
+  if (code === "invalid-lobby-data") {
+    return "Lobby data is invalid. Ask the host to create a new game.";
+  }
+  if (code === "network-error") {
+    return "Network/database error while contacting Firebase. Try again.";
+  }
+  if (code === "firebase-error") {
+    return "Unexpected Firebase error. Check console diagnostics and database setup.";
+  }
+  if (code === "invalid-join-code") {
+    return "Enter a valid join code.";
+  }
+  if (code === "game-already-started") {
+    return "That game already started.";
+  }
+  if (code === "game-finished") {
+    return "That game already finished.";
+  }
+  if (code === "lobby-full") {
+    return "Lobby is full (4 players).";
+  }
+
+  return error?.message || "Unexpected error.";
+}
+
+async function ensureActionAuthUid() {
+  if (authUid) {
+    return authUid;
+  }
+  const user = await ensureAuthReady();
+  authUid = user?.uid || null;
+  if (!authUid) {
+    const error = new Error("Authentication is still initializing.");
+    error.code = "auth-not-ready";
+    throw error;
+  }
+  return authUid;
 }
 
 function currentSnapshot() {
@@ -333,11 +389,12 @@ async function handleCreateLobby() {
   try {
     setBusy(true);
     clearMessages();
-    const created = await createLobby(authUid, name);
+    const readyUid = await ensureActionAuthUid();
+    const created = await createLobby(readyUid, name);
     bindGameSubscription(created.code);
     setLobbyMessage("Lobby created. Share the join code.", "success");
   } catch (error) {
-    setLandingMessage(error.message, "error");
+    setLandingMessage(toUiErrorMessage(error), "error");
   } finally {
     setBusy(false);
   }
@@ -345,17 +402,18 @@ async function handleCreateLobby() {
 
 async function handleJoinLobby() {
   const name = sanitizeDisplayName(ui.elements.displayNameInput.value);
-  const code = sanitizeJoinCode(ui.elements.joinCodeInput.value);
+  const code = String(ui.elements.joinCodeInput.value || "");
   saveDisplayName(name);
 
   try {
     setBusy(true);
     clearMessages();
-    const joined = await joinLobby(code, authUid, name);
+    const readyUid = await ensureActionAuthUid();
+    const joined = await joinLobby(code, readyUid, name);
     bindGameSubscription(joined.code);
     setLobbyMessage("Joined lobby successfully.", "success");
   } catch (error) {
-    setLandingMessage(error.message, "error");
+    setLandingMessage(toUiErrorMessage(error), "error");
   } finally {
     setBusy(false);
   }
