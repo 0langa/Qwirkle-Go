@@ -903,17 +903,6 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
   border-width: 2px;
 }
 
-.board-cell .coord-label {
-  position: absolute;
-  top: 2px;
-  left: 3px;
-  font-size: 0.5rem;
-  font-weight: 600;
-  color: rgba(255,255,255,0.22);
-  pointer-events: none;
-  line-height: 1;
-}
-
 /* ═══════════════════════════════════════════
    TILES
 ═══════════════════════════════════════════ */

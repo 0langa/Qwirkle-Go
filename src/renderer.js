@@ -151,7 +151,7 @@ export function renderBoardGrid(container, { boardMap, tentativePlacements, inte
 
       const inner = tile
         ? renderTileHtml(tile, { tentative: Boolean(tentativeTile) })
-        : `<span class="coord-label">${cell.x},${cell.y}</span>`;
+        : "";
 
       // Tentative tiles are clickable (to remove), permanent tiles are not
       const disabled = !interactive && !tentativeTile ? "disabled" : "";
