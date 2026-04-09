@@ -246,6 +246,15 @@ code {
   box-shadow: 0 4px 14px rgba(37,99,235,0.36);
 }
 
+.btn-dev-entry {
+  background: #fff7ed;
+  color: #9a3412;
+  border: 1px dashed #fdba74;
+}
+.btn-dev-entry:hover:not(:disabled) {
+  background: #ffedd5;
+}
+
 .btn-secondary {
   background: #e8efff;
   color: #1e3a7a;

@@ -129,6 +129,101 @@ function clearMessages() {
   setGameMessage("");
 }
 
+function createDevSandboxSnapshot(currentUid) {
+  const now = Date.now();
+  const meUid = currentUid || "dev-local-user";
+  const enemyUid = "dev-local-opponent";
+
+  const makeTile = (id, color, shape) => ({ id, color, shape });
+
+  return {
+    meta: {
+      joinCode: "DEV00",
+      status: "in_progress",
+      hostUid: meUid,
+      createdAt: now,
+      startedAt: now,
+      endedAt: null,
+      revision: 1,
+      maxPlayers: 4,
+    },
+    players: {
+      [meUid]: {
+        uid: meUid,
+        name: "Du (Dev)",
+        isHost: true,
+        joinedAt: now - 2000,
+        connected: true,
+        lastSeenAt: now,
+      },
+      [enemyUid]: {
+        uid: enemyUid,
+        name: "Testgegner",
+        isHost: false,
+        joinedAt: now - 1000,
+        connected: true,
+        lastSeenAt: now,
+      },
+    },
+    game: {
+      board: {},
+      bag: Array.from({ length: 80 }, (_, i) => makeTile(`bag-${i}`, "blue", "circle")),
+      racks: {
+        [meUid]: [
+          makeTile("dev-r1", "red", "star"),
+          makeTile("dev-r2", "orange", "square"),
+          makeTile("dev-r3", "yellow", "circle"),
+          makeTile("dev-r4", "green", "diamond"),
+          makeTile("dev-r5", "blue", "clover"),
+          makeTile("dev-r6", "purple", "cross"),
+        ],
+        [enemyUid]: [
+          makeTile("dev-e1", "red", "circle"),
+          makeTile("dev-e2", "red", "square"),
+          makeTile("dev-e3", "red", "diamond"),
+          makeTile("dev-e4", "red", "star"),
+          makeTile("dev-e5", "red", "clover"),
+          makeTile("dev-e6", "red", "cross"),
+        ],
+      },
+      scores: {
+        [meUid]: 0,
+        [enemyUid]: 0,
+      },
+      turnOrder: [meUid, enemyUid],
+      currentTurnIndex: 0,
+      currentPlayerUid: meUid,
+      openingRequirement: null,
+      consecutivePasses: 0,
+      moveNumber: 0,
+      moveHistory: {},
+      winnerUids: [],
+      finalStandings: [],
+    },
+  };
+}
+
+async function handleDevEnterGame() {
+  clearMessages();
+  ui.hideResultDialog();
+  dropGameSubscription();
+  resetTurnDraft();
+
+  if (!authUid) {
+    authUid = getAuthUser()?.uid || "dev-local-user";
+  }
+
+  const snapshot = createDevSandboxSnapshot(authUid);
+  patchState({
+    activeCode: null,
+    gameSnapshot: snapshot,
+    boardHasCentered: false,
+  });
+  ui.setConnectionState("Lokaler Dev-Testmodus", "neutral");
+  renderBySnapshot(snapshot);
+  setGameMessage("Dev-Testmodus aktiv: UI und Zugentwurf lokal testen (ohne Firebase-Schreibzugriffe).");
+}
+
 // ─── Screen navigation ───────────────────────────────────────────────────────
 
 function openLanding(message = "", tone = "") {
@@ -896,6 +991,7 @@ function bindUiEvents() {
   });
 
   ui.elements.createGameBtn.addEventListener("click", handleCreateLobby);
+  ui.elements.devEnterGameBtn.addEventListener("click", handleDevEnterGame);
   ui.elements.joinGameBtn.addEventListener("click",   handleJoinLobby);
 
   ui.elements.copyCodeBtn.addEventListener("click",   copyJoinCode);

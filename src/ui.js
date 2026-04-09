@@ -14,6 +14,7 @@ export function createUi() {
     displayNameInput: document.getElementById("display-name-input"),
     joinCodeInput: document.getElementById("join-code-input"),
     createGameBtn: document.getElementById("create-game-btn"),
+    devEnterGameBtn: document.getElementById("dev-enter-game-btn"),
     joinGameBtn: document.getElementById("join-game-btn"),
     landingMessage: document.getElementById("landing-message"),
 
