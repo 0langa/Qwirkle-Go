@@ -3,12 +3,32 @@ import { coordinateKey } from "./utils.js";
 
 // SVG paths for the 6 Qwirkle shapes (viewBox 0 0 24 24)
 const SHAPE_SVGS = {
-  circle:  '<circle cx="12" cy="12" r="8"/>',
-  square:  '<rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/>',
-  diamond: '<polygon points="12,2 22,12 12,22 2,12"/>',
-  star:    '<path d="M12,1.8 L14.4,8.8 L21.8,8.8 L15.9,13.4 L18.2,20.4 L12,15.8 L5.8,20.4 L8.1,13.4 L2.2,8.8 L9.6,8.8 Z"/>',
+  circle:  '<circle cx="12" cy="12" r="8.2"/>',
+  square:  '<rect x="4" y="4" width="16" height="16"/>',
+  diamond: '<polygon points="12,2.6 21.4,12 12,21.4 2.6,12"/>',
+  // 8-point burst star to match the provided style sheet
+  star:    '<polygon points="12,2 14,7.5 19.5,5.5 17.5,11 23,13 17.5,15 19.5,20.5 14,18.5 12,24 10,18.5 4.5,20.5 6.5,15 1,13 6.5,11 4.5,5.5 10,7.5"/>',
   clover:  '<circle cx="12" cy="7" r="4.2"/><circle cx="17" cy="12" r="4.2"/><circle cx="12" cy="17" r="4.2"/><circle cx="7" cy="12" r="4.2"/>',
-  cross:   '<path d="M9.5,2.5 H14.5 V9.5 H21.5 V14.5 H14.5 V21.5 H9.5 V14.5 H2.5 V9.5 H9.5 Z"/>',
+  // Concave 4-point star / X-star to match row 4 in the provided image
+  cross:   '<polygon points="12,2.2 14.9,8.4 21.8,5.1 18.5,12 21.8,18.9 14.9,15.6 12,21.8 9.1,15.6 2.2,18.9 5.5,12 2.2,5.1 9.1,8.4"/>',
+};
+
+const COLOR_NAMES_DE = {
+  red: "Rot",
+  orange: "Orange",
+  yellow: "Gelb",
+  green: "Grün",
+  blue: "Blau",
+  purple: "Lila",
+};
+
+const SHAPE_NAMES_DE = {
+  circle: "Kreis",
+  square: "Quadrat",
+  diamond: "Raute",
+  star: "Stern",
+  clover: "Kleeblatt",
+  cross: "Kreuzstern",
 };
 
 function escapeHtml(text) {
@@ -25,6 +45,12 @@ function shapeMarkup(shape) {
   return SHAPE_SVGS[shape] || SHAPE_SVGS.circle;
 }
 
+function tileTitleDe(tile) {
+  const color = COLOR_NAMES_DE[tile?.color] || String(tile?.color || "");
+  const shape = SHAPE_NAMES_DE[tile?.shape] || String(tile?.shape || "");
+  return `${color} ${shape}`.trim();
+}
+
 // Exported so app.js can create a drag ghost
 export function renderTileHtml(tile, options = {}) {
   const classes = ["tile", tile.color];
@@ -32,7 +58,7 @@ export function renderTileHtml(tile, options = {}) {
   if (options.invalid)   classes.push("invalid");
 
   const svg = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${shapeMarkup(tile.shape)}</svg>`;
-  return `<div class="${classes.join(" ")}" title="${escapeHtml(tile.color)} ${escapeHtml(tile.shape)}">${svg}</div>`;
+  return `<div class="${classes.join(" ")}" title="${escapeHtml(tileTitleDe(tile))}">${svg}</div>`;
 }
 
 export function renderLobbyPlayers(container, playersByUid, currentUid) {
@@ -118,7 +144,7 @@ export function renderRack(container, rackTiles, selectedTileId, exchangeSelecti
           class="${classes.join(" ")}"
           data-rack-tile-id="${escapeHtml(tile.id)}"
           type="button"
-          aria-label="${escapeHtml(tile.color)} ${escapeHtml(tile.shape)}"
+          aria-label="${escapeHtml(tileTitleDe(tile))}"
           draggable="false"
         >
           ${renderTileHtml(tile)}
