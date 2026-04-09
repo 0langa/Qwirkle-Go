@@ -131,18 +131,16 @@ code {
 }
 
 /* ═══════════════════════════════════════════
-   CONNECTION PILL (fixed top-right)
+   CONNECTION PILL (inline in topbar)
 ═══════════════════════════════════════════ */
 .connection-pill {
-  position: fixed;
-  top: 12px;
-  right: 14px;
-  z-index: 100;
-  font-size: 0.75rem;
+  position: static;
+  font-size: 0.72rem;
   font-weight: 600;
-  padding: 0.28rem 0.7rem;
+  padding: 0.22rem 0.6rem;
   border-radius: 999px;
   border: 1px solid transparent;
+  white-space: nowrap;
 }
 
 /* ═══════════════════════════════════════════
@@ -1133,9 +1131,9 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
    DEV BUTTON
 ═══════════════════════════════════════════ */
 .dev-btn {
-  position: fixed;
-  bottom: 10px;
-  left: 10px;
+  position: static;
+  margin: 0.1rem 1rem 0.55rem auto;
+  align-self: flex-end;
   font-size: 0.7rem;
   padding: 0.3rem 0.65rem;
   background: #fef2f2;
@@ -1144,7 +1142,6 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
   border-radius: var(--r-sm);
   cursor: pointer;
   opacity: 0.6;
-  z-index: 50;
   transition: opacity 150ms ease;
 }
 .dev-btn:hover { opacity: 1; }
@@ -1322,6 +1319,7 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
 
   .game-topbar { flex-wrap: wrap; }
   .topbar-right { display: none; }
+  .dev-btn { margin: 0.1rem 0.75rem 0.5rem auto; }
 }
 
 /* ═══════════════════════════════════════════
