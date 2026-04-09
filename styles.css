@@ -433,30 +433,11 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
   margin-bottom: 0.25rem;
 }
 
-.hero-tile {
+.logo-tile {
   width: 34px;
   height: 34px;
   border-radius: 7px;
-  background: var(--tile-face);
-  border: 1px solid var(--tile-border);
-  box-shadow: var(--tile-shadow);
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
 }
-
-/* Hero tile shapes via SVG background (inline, no JS) */
-.hero-tile {
-  background-size: 20px 20px;
-  background-repeat: no-repeat;
-  background-position: center;
-}
-.ht-red    { background-color: var(--tile-face); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='8' fill='%23e82020'/%3E%3C/svg%3E"); }
-.ht-blue   { background-color: var(--tile-face); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12,1.8 L14.4,8.8 L21.8,8.8 L15.9,13.4 L18.2,20.4 L12,15.8 L5.8,20.4 L8.1,13.4 L2.2,8.8 L9.6,8.8 Z' fill='%232563eb'/%3E%3C/svg%3E"); }
-.ht-yellow { background-color: var(--tile-face); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpolygon points='12,2 22,12 12,22 2,12' fill='%23d4a400'/%3E%3C/svg%3E"); }
-.ht-green  { background-color: var(--tile-face); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='7' r='4.2' fill='%2316a34a'/%3E%3Ccircle cx='17' cy='12' r='4.2' fill='%2316a34a'/%3E%3Ccircle cx='12' cy='17' r='4.2' fill='%2316a34a'/%3E%3Ccircle cx='7' cy='12' r='4.2' fill='%2316a34a'/%3E%3C/svg%3E"); }
-.ht-purple { background-color: var(--tile-face); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9.5,2.5 H14.5 V9.5 H21.5 V14.5 H14.5 V21.5 H9.5 V14.5 H2.5 V9.5 H9.5 Z' fill='%237c3aed'/%3E%3C/svg%3E"); }
-.ht-orange { background-color: var(--tile-face); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3.5' y='3.5' width='17' height='17' rx='2.5' fill='%23f07818'/%3E%3C/svg%3E"); }
 
 .hero-title {
   font-size: clamp(1.6rem, 3vw, 2.2rem);
@@ -1342,7 +1323,7 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
 @media (max-width: 600px) {
   .landing-wrap { padding: 1rem 0.75rem 1.5rem; gap: 1.25rem; }
   .landing-card { padding: 1.25rem; }
-  .hero-tile { width: 28px; height: 28px; border-radius: 6px; }
+  .logo-tile { width: 28px; height: 28px; border-radius: 6px; }
   .hero-title { font-size: clamp(1.5rem, 8vw, 1.9rem); }
 
   .lobby-card { margin: 0.75rem; padding: 1.25rem; }
