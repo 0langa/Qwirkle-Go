@@ -4,6 +4,7 @@ export function createUi() {
   const elements = {
     connectionPill: document.getElementById("connection-pill"),
     topHeader: document.getElementById("top-header"),
+    legalNote: document.getElementById("legal-note"),
 
     setupScreen: document.getElementById("setup-screen"),
     landingScreen: document.getElementById("landing-screen"),
@@ -56,6 +57,9 @@ export function createUi() {
     }
     if (elements.topHeader) {
       elements.topHeader.classList.toggle("hidden", screenId === "game-screen");
+    }
+    if (elements.legalNote) {
+      elements.legalNote.classList.toggle("hidden", screenId === "game-screen");
     }
   }
 

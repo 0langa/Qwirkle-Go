@@ -63,13 +63,16 @@ code {
   margin: 0 auto;
   display: grid;
   gap: 1rem;
+  padding-bottom: 2.5rem;
 }
 
 .top-header {
+  position: relative;
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  justify-content: center;
+  align-items: center;
   gap: 1rem;
+  text-align: center;
 }
 
 .top-header h1 {
@@ -77,9 +80,10 @@ code {
   letter-spacing: 0.02em;
 }
 
-.subtitle {
-  color: var(--muted);
-  margin-top: 0.25rem;
+.top-header .pill {
+  position: absolute;
+  right: 0;
+  top: 0;
 }
 
 .screen {
@@ -233,6 +237,17 @@ button.danger:hover:not(:disabled) {
 
 .tiny {
   font-size: 0.86rem;
+}
+
+.legal-note {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0.45rem;
+  text-align: center;
+  font-size: 0.74rem;
+  color: #6d7f9a;
+  pointer-events: none;
 }
 
 .lobby-head {
@@ -504,5 +519,9 @@ button.danger:hover:not(:disabled) {
     width: 38px;
     height: 38px;
     font-size: 1.1rem;
+  }
+
+  .top-header .pill {
+    position: static;
   }
 }
