@@ -12,46 +12,22 @@ export function calculateBounds(boardMap, tentativePlacements = [], minSpan = 11
     coords.push({ x: placement.x, y: placement.y });
   }
 
-  if (!coords.length) {
-    const half = Math.floor(minSpan / 2);
-    return {
-      minX: -half,
-      maxX: half,
-      minY: -half,
-      maxY: half,
-    };
-  }
+  const effectiveMinSpan = Math.max(51, Number(minSpan || 0));
+  const half = Math.floor(effectiveMinSpan / 2);
+  let minX = -half;
+  let maxX = half;
+  let minY = -half;
+  let maxY = half;
 
-  let minX = coords[0].x;
-  let maxX = coords[0].x;
-  let minY = coords[0].y;
-  let maxY = coords[0].y;
+  if (!coords.length) {
+    return { minX, maxX, minY, maxY };
+  }
 
   for (const point of coords) {
-    if (point.x < minX) minX = point.x;
-    if (point.x > maxX) maxX = point.x;
-    if (point.y < minY) minY = point.y;
-    if (point.y > maxY) maxY = point.y;
-  }
-
-  minX -= padding;
-  maxX += padding;
-  minY -= padding;
-  maxY += padding;
-
-  const width = maxX - minX + 1;
-  const height = maxY - minY + 1;
-
-  if (width < minSpan) {
-    const add = minSpan - width;
-    minX -= Math.floor(add / 2);
-    maxX += Math.ceil(add / 2);
-  }
-
-  if (height < minSpan) {
-    const add = minSpan - height;
-    minY -= Math.floor(add / 2);
-    maxY += Math.ceil(add / 2);
+    if (point.x < minX) minX = point.x - padding;
+    if (point.x > maxX) maxX = point.x + padding;
+    if (point.y < minY) minY = point.y - padding;
+    if (point.y > maxY) maxY = point.y + padding;
   }
 
   return { minX, maxX, minY, maxY };

@@ -30,6 +30,7 @@ export function createUi() {
     bagCount: document.getElementById("bag-count"),
     turnIndicator: document.getElementById("turn-indicator"),
     gameStatus: document.getElementById("game-status"),
+    centerBoardBtn: document.getElementById("center-board-btn"),
     scoreboard: document.getElementById("scoreboard"),
     boardScroll: document.getElementById("board-scroll"),
     boardGrid: document.getElementById("board-grid"),

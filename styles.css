@@ -800,7 +800,7 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
   color: var(--ink);
 }
 
-.topbar-right { display: flex; align-items: center; }
+.topbar-right { display: flex; align-items: center; gap: 0.4rem; }
 
 .game-status-badge {
   font-size: 0.78rem;
@@ -878,7 +878,7 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
   grid-auto-rows: var(--cell);
   gap: 3px;
   width: max-content;
-  margin: 0 auto;
+  margin: 0;
 }
 
 /* Board cells */
@@ -1311,7 +1311,7 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
   .btn-dev-inline { padding: 0.44rem 0.6rem; font-size: 0.7rem; }
 
   .game-topbar { flex-wrap: wrap; }
-  .topbar-right { display: none; }
+  .game-status-badge { display: none; }
 }
 
 /* ═══════════════════════════════════════════

@@ -248,10 +248,15 @@ function dropGameSubscription() {
 function centerBoardIfNeeded() {
   const state = getState();
   if (state.boardHasCentered) return;
+  centerBoardNow();
+  patchState({ boardHasCentered: true });
+}
+
+function centerBoardNow() {
   const scroller = ui.elements.boardScroll;
+  if (!scroller) return;
   scroller.scrollLeft = (scroller.scrollWidth - scroller.clientWidth) / 2;
   scroller.scrollTop  = (scroller.scrollHeight - scroller.clientHeight) / 2;
-  patchState({ boardHasCentered: true });
 }
 
 // ─── Action button state ─────────────────────────────────────────────────────
@@ -969,6 +974,10 @@ function toggleRackHelp() {
   text.classList.toggle("hidden", expanded);
 }
 
+function handleCenterBoard() {
+  centerBoardNow();
+}
+
 // ─── Event binding ───────────────────────────────────────────────────────────
 
 function bindUiEvents() {
@@ -1008,6 +1017,7 @@ function bindUiEvents() {
   ui.elements.exchangeSelectedBtn.addEventListener("click", handleExchangeSelected);
   ui.elements.passTurnBtn.addEventListener("click",        handlePassTurn);
   ui.elements.devDeleteGameBtn.addEventListener("click",   handleDevDeleteGame);
+  ui.elements.centerBoardBtn.addEventListener("click",     handleCenterBoard);
   ui.elements.rackHelpToggleBtn.addEventListener("click",  toggleRackHelp);
 
   window.addEventListener("beforeunload", () => detachPresence());
