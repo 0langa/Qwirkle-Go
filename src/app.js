@@ -53,6 +53,9 @@ let presenceCode = null;
 
 // ─── Drag state ─────────────────────────────────────────────────────────────
 let dragState = null;
+let panState = null;
+let suppressBoardClickUntil = 0;
+let suppressRackClickUntil = 0;
 
 // ─── Busy ────────────────────────────────────────────────────────────────────
 
@@ -589,6 +592,7 @@ function placeTileOnBoard(x, y, tileId, tile) {
 // ─── Click handlers ──────────────────────────────────────────────────────────
 
 function handleRackClick(event) {
+  if (performance.now() < suppressRackClickUntil) return;
   const target = event.target.closest("[data-rack-tile-id]");
   if (!target || !myTurn()) return;
 
@@ -623,6 +627,7 @@ function handleRackClick(event) {
 }
 
 function handleBoardClick(event) {
+  if (performance.now() < suppressBoardClickUntil) return;
   const button = event.target.closest("[data-board-x][data-board-y]");
   if (!button || !myTurn()) return;
 
@@ -672,6 +677,12 @@ function getGhostEl() {
   return document.getElementById("drag-ghost");
 }
 
+function setBoardDragActive(active) {
+  const scroller = ui.elements.boardScroll;
+  if (!scroller) return;
+  scroller.classList.toggle("drag-active", Boolean(active));
+}
+
 function clearDropHighlight() {
   if (dragState?.currentDropTarget) {
     dragState.currentDropTarget.classList.remove("drag-over");
@@ -703,6 +714,10 @@ function initDragAndDrop() {
 
     const tile = myRack().find((t) => t.id === tileId);
     if (!tile) return;
+
+    if (event.pointerType === "touch") {
+      event.preventDefault();
+    }
 
     // Record pending drag — don't preventDefault yet (preserves click)
     pendingDrag = {
@@ -749,6 +764,7 @@ function onPendingMove(event) {
   };
 
   sourceEl.classList.add("dragging");
+  setBoardDragActive(true);
   sourceEl.setPointerCapture(pointerId);
 
   document.addEventListener("pointermove", onDragMove, { passive: false });
@@ -800,6 +816,7 @@ function onDragEnd() {
 
   if (currentDropTarget) currentDropTarget.classList.remove("drag-over");
   sourceEl.classList.remove("dragging");
+  setBoardDragActive(false);
 
   document.removeEventListener("pointermove", onDragMove);
   document.removeEventListener("pointerup",   onDragEnd);
@@ -813,6 +830,9 @@ function onDragEnd() {
     const y = Number(wasDropTarget.dataset.boardY);
     placeTileOnBoard(x, y, tileId, tile);
   }
+
+  suppressRackClickUntil = performance.now() + 220;
+  suppressBoardClickUntil = performance.now() + 220;
 }
 
 function onDragCancel() {
@@ -822,10 +842,64 @@ function onDragCancel() {
   ghost.innerHTML = "";
   if (dragState.currentDropTarget) dragState.currentDropTarget.classList.remove("drag-over");
   dragState.sourceEl.classList.remove("dragging");
+  setBoardDragActive(false);
   document.removeEventListener("pointermove", onDragMove);
   document.removeEventListener("pointerup",   onDragEnd);
   document.removeEventListener("pointercancel", onDragCancel);
   dragState = null;
+  suppressRackClickUntil = performance.now() + 220;
+  suppressBoardClickUntil = performance.now() + 220;
+}
+
+const PAN_THRESHOLD = 6;
+
+function initBoardPanning() {
+  const scroller = ui.elements.boardScroll;
+  if (!scroller) return;
+
+  scroller.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (dragState || pendingDrag) return;
+
+    panState = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startLeft: scroller.scrollLeft,
+      startTop: scroller.scrollTop,
+      active: false,
+      moved: false,
+    };
+
+    scroller.setPointerCapture(event.pointerId);
+  });
+
+  scroller.addEventListener("pointermove", (event) => {
+    if (!panState || event.pointerId !== panState.pointerId) return;
+
+    const dx = event.clientX - panState.startX;
+    const dy = event.clientY - panState.startY;
+    if (!panState.active && Math.hypot(dx, dy) < PAN_THRESHOLD) return;
+
+    panState.active = true;
+    panState.moved = true;
+    scroller.classList.add("panning");
+    scroller.scrollLeft = panState.startLeft - dx;
+    scroller.scrollTop = panState.startTop - dy;
+    event.preventDefault();
+  }, { passive: false });
+
+  function endPan(event) {
+    if (!panState || event.pointerId !== panState.pointerId) return;
+    if (panState.moved) {
+      suppressBoardClickUntil = performance.now() + 220;
+    }
+    scroller.classList.remove("panning");
+    panState = null;
+  }
+
+  scroller.addEventListener("pointerup", endPan);
+  scroller.addEventListener("pointercancel", endPan);
 }
 
 // ─── Game actions ─────────────────────────────────────────────────────────────
@@ -1024,6 +1098,7 @@ function bindUiEvents() {
 
   // Drag and drop
   initDragAndDrop();
+  initBoardPanning();
 }
 
 // ─── Session resume ───────────────────────────────────────────────────────────
