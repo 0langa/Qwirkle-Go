@@ -5,10 +5,10 @@
     "games": {
       "$code": {
         ".read": "auth != null && (data.child('players').child(auth.uid).exists() || data.child('meta').child('status').val() == 'lobby')",
-        ".write": "auth != null && ((!data.exists() && newData.child('players').child(auth.uid).exists() && newData.child('meta').child('hostUid').val() == auth.uid) || (data.exists() && data.child('meta').child('status').val() != 'finished' && (data.child('players').child(auth.uid).exists() || (data.child('meta').child('status').val() == 'lobby' && !data.child('players').child(auth.uid).exists() && newData.child('players').child(auth.uid).exists() && newData.child('meta').child('status').val() == 'lobby')) && (data.child('meta').child('status').val() != 'lobby' || newData.child('meta').child('status').val() != 'in_progress' || data.child('meta').child('hostUid').val() == auth.uid)))",
+        ".write": "auth != null && ((!data.exists() && newData.child('meta').child('hostUid').val() == auth.uid && newData.child('players').child(auth.uid).exists()) || (data.exists() && data.child('meta').child('status').val() != 'finished' && (data.child('players').child(auth.uid).exists() || (data.child('meta').child('status').val() == 'lobby' && !data.child('players').child(auth.uid).exists() && newData.child('players').child(auth.uid).exists() && newData.child('meta').child('status').val() == 'lobby')) && (data.child('meta').child('status').val() != 'lobby' || newData.child('meta').child('status').val() != 'in_progress' || data.child('meta').child('hostUid').val() == auth.uid)))",
         "meta": {
           "joinCode": {
-            ".validate": "newData.isString() && newData.val().matches(/^[A-Z0-9]{4,8}$/)"
+            ".validate": "newData.isString() && newData.val().matches(/^[A-Z0-9]{4,8}$/) && (!data.exists() || newData.val() == data.val())"
           },
           "status": {
             ".validate": "newData.val() == 'lobby' || newData.val() == 'in_progress' || newData.val() == 'finished'"
@@ -16,18 +16,28 @@
           "hostUid": {
             ".validate": "newData.isString() && newData.val().length > 0"
           },
+          "createdAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "startedAt": {
+            ".validate": "newData.isNumber() || !newData.exists()"
+          },
+          "endedAt": {
+            ".validate": "newData.isNumber() || !newData.exists()"
+          },
           "revision": {
             ".validate": "newData.isNumber() && newData.val() >= 1"
           },
+          "maxPlayers": {
+            ".validate": "newData.isNumber() && newData.val() == 4"
+          },
           "$other": {
-            ".validate": true
+            ".validate": false
           }
         },
         "players": {
-          ".validate": "newData.childrenCount() <= 4",
+          ".validate": "newData.exists()",
           "$uid": {
-            ".read": "auth != null && (root.child('games/' + $code + '/players/' + auth.uid).exists() || root.child('games/' + $code + '/meta/status').val() == 'lobby')",
-            ".write": "auth != null && (auth.uid == $uid || root.child('games/' + $code + '/meta/hostUid').val() == auth.uid)",
             "uid": {
               ".validate": "newData.val() == $uid"
             },
@@ -43,8 +53,11 @@
             "isHost": {
               ".validate": "newData.isBoolean()"
             },
+            "lastSeenAt": {
+              ".validate": "newData.isNumber() || !newData.exists()"
+            },
             "$other": {
-              ".validate": true
+              ".validate": false
             }
           }
         },
