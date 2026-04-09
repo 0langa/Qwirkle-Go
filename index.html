@@ -96,8 +96,19 @@
 
         <section id="game-screen" class="screen hidden" aria-live="polite">
           <section class="card">
-            <h3>Dein Ablageständer</h3>
-            <p class="muted tiny">
+            <div class="rack-title-row">
+              <h3>Deine Steine</h3>
+              <button
+                id="rack-help-toggle-btn"
+                type="button"
+                class="help-icon-btn"
+                aria-label="Hilfe zu deinen Steinen anzeigen"
+                aria-expanded="false"
+              >
+                ?
+              </button>
+            </div>
+            <p id="rack-help-text" class="muted tiny hidden">
               Normalmodus: Klicke ein Teil zum Platzieren. Tauschmodus: Markiere ein oder mehrere Teile zum Tauschen.
             </p>
             <div id="rack" class="rack" aria-label="Ablageständer des Spielers"></div>

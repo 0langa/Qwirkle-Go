@@ -341,6 +341,34 @@ button.danger:hover:not(:disabled) {
   gap: 0.45rem;
 }
 
+.rack-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+}
+
+.rack-title-row h3 {
+  text-align: center;
+}
+
+.help-icon-btn {
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 50%;
+  border: 1px solid #bfd0ea;
+  background: #edf4ff;
+  color: #1c4f8b;
+  font-weight: 800;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.help-icon-btn:hover:not(:disabled) {
+  background: #dceaff;
+}
+
 .board-scroll {
   overflow: auto;
   border: 1px solid var(--border);

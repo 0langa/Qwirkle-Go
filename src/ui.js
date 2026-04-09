@@ -33,6 +33,8 @@ export function createUi() {
     boardScroll: document.getElementById("board-scroll"),
     boardGrid: document.getElementById("board-grid"),
     rack: document.getElementById("rack"),
+    rackHelpToggleBtn: document.getElementById("rack-help-toggle-btn"),
+    rackHelpText: document.getElementById("rack-help-text"),
     commitMoveBtn: document.getElementById("commit-move-btn"),
     undoPlacementBtn: document.getElementById("undo-placement-btn"),
     cancelTurnBtn: document.getElementById("cancel-turn-btn"),

@@ -718,6 +718,20 @@ async function copyJoinCode() {
   }
 }
 
+function toggleRackHelp() {
+  const button = ui.elements.rackHelpToggleBtn;
+  const helpText = ui.elements.rackHelpText;
+  if (!button || !helpText) {
+    return;
+  }
+
+  const expanded = button.getAttribute("aria-expanded") === "true";
+  const nextExpanded = !expanded;
+  button.setAttribute("aria-expanded", String(nextExpanded));
+  button.textContent = nextExpanded ? "×" : "?";
+  helpText.classList.toggle("hidden", !nextExpanded);
+}
+
 function bindUiEvents() {
   ui.elements.displayNameInput.addEventListener("change", () => {
     const clean = sanitizeDisplayName(ui.elements.displayNameInput.value);
@@ -752,6 +766,7 @@ function bindUiEvents() {
   ui.elements.exchangeSelectedBtn.addEventListener("click", handleExchangeSelected);
   ui.elements.passTurnBtn.addEventListener("click", handlePassTurn);
   ui.elements.devDeleteGameBtn.addEventListener("click", handleDevDeleteGame);
+  ui.elements.rackHelpToggleBtn.addEventListener("click", toggleRackHelp);
 
   window.addEventListener("beforeunload", () => {
     detachPresence();
