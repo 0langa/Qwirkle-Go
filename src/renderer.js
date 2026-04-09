@@ -10,7 +10,7 @@ const SHAPE_SVGS = {
   star:    '<polygon points="12,2 14,7.5 19.5,5.5 17.5,11 23,13 17.5,15 19.5,20.5 14,18.5 12,24 10,18.5 4.5,20.5 6.5,15 1,13 6.5,11 4.5,5.5 10,7.5"/>',
   clover:  '<circle cx="12" cy="7" r="4.2"/><circle cx="17" cy="12" r="4.2"/><circle cx="12" cy="17" r="4.2"/><circle cx="7" cy="12" r="4.2"/>',
   // Concave 4-point star / X-star to match row 4 in the provided image
-  cross:   '<polygon points="12,6 21.2,2.3 18,12 21.2,21.7 12,18 2.8,21.7 6,12 2.8,2.3"/>',
+  cross:   '<polygon points="2.2,2.2 10.2,10.2 12,7.1 13.8,10.2 21.8,2.2 13.8,12 21.8,21.8 13.8,13.8 12,16.9 10.2,13.8 2.2,21.8 10.2,12"/>',
 };
 
 const COLOR_NAMES_DE = {
