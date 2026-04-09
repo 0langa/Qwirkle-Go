@@ -79,8 +79,10 @@ const DEV_QUERY_ENABLED =
   new URLSearchParams(window.location.search).get("dev") === "1";
 const DEV_HOST_ENABLED = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
 const DEV_MODE = DEV_QUERY_ENABLED || DEV_HOST_ENABLED;
+const DEV_TOOLS_STORAGE_KEY = "qwirkle.devToolsEnabled";
 
 let boardKeyboardFocus = { x: 0, y: 0 };
+let devToolsEnabled = DEV_MODE;
 
 // ─── Busy ────────────────────────────────────────────────────────────────────
 
@@ -232,7 +234,7 @@ function createDevSandboxSnapshot(currentUid) {
 }
 
 async function handleDevEnterGame() {
-  if (!DEV_MODE) return;
+  if (!devToolsEnabled) return;
   clearMessages();
   ui.hideResultDialog();
   dropGameSubscription();
@@ -345,13 +347,41 @@ function refreshBoardZoomStyles() {
 function applyDevUiVisibility() {
   const devEntry = ui.elements.devEnterGameBtn;
   const devDelete = ui.elements.devDeleteGameBtn;
+  const devToggle = ui.elements.devToolsToggleBtn;
 
   if (devEntry) {
-    devEntry.classList.toggle("hidden", !DEV_MODE);
+    devEntry.classList.toggle("hidden", !devToolsEnabled);
   }
   if (devDelete) {
-    devDelete.classList.toggle("hidden", !DEV_MODE);
+    devDelete.classList.toggle("hidden", !devToolsEnabled);
   }
+  if (devToggle) {
+    devToggle.textContent = devToolsEnabled ? "Dev-Tools deaktivieren" : "Dev-Tools aktivieren";
+    devToggle.setAttribute("aria-pressed", String(devToolsEnabled));
+    devToggle.classList.toggle("active", devToolsEnabled);
+  }
+}
+
+function loadDevToolsPreference() {
+  try {
+    const stored = localStorage.getItem(DEV_TOOLS_STORAGE_KEY);
+    if (stored === "true") return true;
+    if (stored === "false") return false;
+  } catch (_err) {
+    // ignore storage errors
+  }
+  return DEV_MODE;
+}
+
+function setDevToolsEnabled(enabled) {
+  devToolsEnabled = Boolean(enabled);
+  try {
+    localStorage.setItem(DEV_TOOLS_STORAGE_KEY, String(devToolsEnabled));
+  } catch (_err) {
+    // ignore storage errors
+  }
+  applyDevUiVisibility();
+  updateActionButtonState();
 }
 
 function getBoardCellElement(x, y) {
@@ -451,6 +481,7 @@ function updateActionButtonState() {
     : "Nur der Host kann einen offline Spieler nach 20 Sekunden überspringen";
 
   if (ui.elements.devDeleteGameBtn) {
+    ui.elements.devDeleteGameBtn.classList.toggle("hidden", !devToolsEnabled);
     ui.elements.devDeleteGameBtn.disabled = actionBusy || !activeCode;
   }
 
@@ -1338,7 +1369,7 @@ async function handleSkipOffline() {
 }
 
 async function handleDevDeleteGame() {
-  if (!DEV_MODE) return;
+  if (!devToolsEnabled) return;
   if (!activeCode) {
     setGameMessage("Kein aktives Spiel zum Löschen.", "error");
     return;
@@ -1405,6 +1436,10 @@ function handleZoomReset() {
   applyBoardZoom(1);
 }
 
+function handleDevToolsToggle() {
+  setDevToolsEnabled(!devToolsEnabled);
+}
+
 // ─── Event binding ───────────────────────────────────────────────────────────
 
 function bindUiEvents() {
@@ -1453,6 +1488,7 @@ function bindUiEvents() {
   ui.elements.zoomResetBtn.addEventListener("click",       handleZoomReset);
   ui.elements.centerBoardBtn.addEventListener("click",     handleCenterBoard);
   ui.elements.rackHelpToggleBtn.addEventListener("click",  toggleRackHelp);
+  ui.elements.devToolsToggleBtn.addEventListener("click",  handleDevToolsToggle);
 
   window.addEventListener("beforeunload", () => detachPresence());
   window.addEventListener("resize", refreshBoardZoomStyles);
@@ -1493,6 +1529,7 @@ function applyJoinCodeFromUrl() {
 
 export async function startApp() {
   bindUiEvents();
+  devToolsEnabled = loadDevToolsPreference();
   applyDevUiVisibility();
   applyLoadedDisplayName();
 

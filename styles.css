@@ -422,6 +422,31 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
   padding: 0.75rem 1rem;
 }
 
+.footer-tools {
+  display: flex;
+  justify-content: center;
+  padding: 0.2rem 1rem 0;
+}
+
+.btn-dev-toggle {
+  font-size: 0.72rem;
+  border: 1px dashed #fdba74;
+  background: #fff7ed;
+  color: #9a3412;
+  padding: 0.35rem 0.7rem;
+}
+
+.btn-dev-toggle:hover:not(:disabled) {
+  background: #ffedd5;
+}
+
+.btn-dev-toggle.active {
+  border-style: solid;
+  border-color: #fb923c;
+  background: #ffedd5;
+  color: #7c2d12;
+}
+
 /* ═══════════════════════════════════════════
    LANDING SCREEN
 ═══════════════════════════════════════════ */

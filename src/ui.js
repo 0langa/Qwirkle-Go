@@ -5,6 +5,8 @@ export function createUi() {
     connectionPill: document.getElementById("connection-pill"),
     topHeader: document.getElementById("top-header"),
     legalNote: document.getElementById("legal-note"),
+    footerTools: document.getElementById("footer-tools"),
+    devToolsToggleBtn: document.getElementById("dev-tools-toggle-btn"),
 
     setupScreen: document.getElementById("setup-screen"),
     landingScreen: document.getElementById("landing-screen"),
@@ -71,6 +73,9 @@ export function createUi() {
     }
     if (elements.legalNote) {
       elements.legalNote.classList.toggle("hidden", screenId === "game-screen");
+    }
+    if (elements.footerTools) {
+      elements.footerTools.classList.toggle("hidden", screenId === "game-screen");
     }
   }
 
