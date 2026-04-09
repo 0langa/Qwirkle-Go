@@ -459,9 +459,9 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
 .ht-orange { background-color: var(--tile-face); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3.5' y='3.5' width='17' height='17' rx='2.5' fill='%23f07818'/%3E%3C/svg%3E"); }
 
 .hero-title {
-  font-size: clamp(2rem, 5vw, 2.8rem);
-  font-weight: 900;
-  letter-spacing: -0.03em;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
   color: var(--ink);
   line-height: 1;
 }
@@ -1343,7 +1343,7 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
   .landing-wrap { padding: 1rem 0.75rem 1.5rem; gap: 1.25rem; }
   .landing-card { padding: 1.25rem; }
   .hero-tile { width: 28px; height: 28px; border-radius: 6px; }
-  .hero-title { font-size: 1.8rem; }
+  .hero-title { font-size: clamp(1.5rem, 8vw, 1.9rem); }
 
   .lobby-card { margin: 0.75rem; padding: 1.25rem; }
   .code-display-value { font-size: 1.6rem; }
