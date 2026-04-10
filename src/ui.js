@@ -59,6 +59,8 @@ export function createUi() {
     skipOfflineBtn: document.getElementById("skip-offline-btn"),
     devDeleteGameBtn: document.getElementById("dev-delete-game-btn"),
     gameMessage: document.getElementById("game-message"),
+    turnNotice: document.getElementById("turn-notice"),
+    qwirkleNotice: document.getElementById("qwirkle-notice"),
     sandboxPanel: document.getElementById("sandbox-panel"),
     sandboxStrictToggle: document.getElementById("sandbox-strict-toggle"),
     sandboxPlayersSelect: document.getElementById("sandbox-players-select"),

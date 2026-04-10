@@ -158,6 +158,10 @@ export async function commitMove(codeInput, uid, draftPlacements) {
 
     const scoreResult = calculateMoveScore(board, placements);
     const scoreGain = Number(scoreResult.score || 0);
+    const qwirkleCount = (scoreResult.lines || []).reduce(
+      (count, line) => count + (line.tiles?.length === 6 ? 1 : 0),
+      0
+    );
 
     game.board = validation.boardAfter;
 
@@ -179,6 +183,7 @@ export async function commitMove(codeInput, uid, draftPlacements) {
         tileId: placement.tile.id,
       })),
       scoreGain,
+      qwirkleCount,
     });
 
     if (opening && opening.uid === uid && isOpeningMove) {

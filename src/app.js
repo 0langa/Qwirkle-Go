@@ -100,6 +100,11 @@ const DEV_TOOLS_STORAGE_KEY = "qwirkle.devToolsEnabled";
 let boardKeyboardFocus = { x: 0, y: 0 };
 let devToolsEnabled = DEV_MODE;
 let sandboxStrictValidation = true;
+let lastRenderedGameToken = null;
+let lastRenderedCurrentPlayerUid = null;
+let latestMoveTokenByGame = new Map();
+let activeTurnNoticeTimeout = null;
+let activeQwirkleNoticeTimeout = null;
 
 // ─── Busy ────────────────────────────────────────────────────────────────────
 
@@ -180,6 +185,66 @@ function clearMessages() {
   setGameMessage("");
 }
 
+function getGameToken(snapshot) {
+  if (!snapshot) return "none";
+  if (inSandboxMode(snapshot)) {
+    return `sandbox:${snapshot.meta?.createdAt || "local"}`;
+  }
+  return `live:${snapshot.meta?.joinCode || activeCode || "unknown"}`;
+}
+
+function latestMoveEntry(moveHistory) {
+  return Object.values(moveHistory || {})
+    .filter((entry) => entry?.type === "move")
+    .sort((a, b) => Number(b.moveNumber || 0) - Number(a.moveNumber || 0))[0] || null;
+}
+
+function lastMoveCoordsFromEntry(entry) {
+  if (!entry || entry.type !== "move" || !Array.isArray(entry.placements)) return [];
+  return entry.placements
+    .map((placement) => coordinateKey(placement.x, placement.y))
+    .filter(Boolean);
+}
+
+function clearTurnAndQwirkleNotices() {
+  if (activeTurnNoticeTimeout) {
+    clearTimeout(activeTurnNoticeTimeout);
+    activeTurnNoticeTimeout = null;
+  }
+  if (activeQwirkleNoticeTimeout) {
+    clearTimeout(activeQwirkleNoticeTimeout);
+    activeQwirkleNoticeTimeout = null;
+  }
+  ui.elements.turnNotice?.classList.remove("show");
+  ui.elements.qwirkleNotice?.classList.remove("show");
+}
+
+function showTurnNotice() {
+  const node = ui.elements.turnNotice;
+  if (!node) return;
+  node.textContent = "Du bist dran!";
+  node.classList.remove("show");
+  requestAnimationFrame(() => node.classList.add("show"));
+  if (activeTurnNoticeTimeout) clearTimeout(activeTurnNoticeTimeout);
+  activeTurnNoticeTimeout = setTimeout(() => {
+    node.classList.remove("show");
+    activeTurnNoticeTimeout = null;
+  }, 2000);
+}
+
+function showQwirkleNotice(qwirkleCount = 1) {
+  const node = ui.elements.qwirkleNotice;
+  if (!node) return;
+  node.textContent = qwirkleCount > 1 ? `Qwirkle x${qwirkleCount}!` : "Qwirkle!";
+  node.classList.remove("show");
+  requestAnimationFrame(() => node.classList.add("show"));
+  if (activeQwirkleNoticeTimeout) clearTimeout(activeQwirkleNoticeTimeout);
+  activeQwirkleNoticeTimeout = setTimeout(() => {
+    node.classList.remove("show");
+    activeQwirkleNoticeTimeout = null;
+  }, 2000);
+}
+
 async function handleDevEnterGame() {
   if (!devToolsEnabled) return;
   clearMessages();
@@ -222,6 +287,10 @@ function openLanding(message = "", tone = "") {
   patchState({ gameSnapshot: null, activeCode: null, boardHasCentered: false });
   resetTurnDraft();
   finishedRevisionShown = null;
+  clearTurnAndQwirkleNotices();
+  lastRenderedGameToken = null;
+  lastRenderedCurrentPlayerUid = null;
+  latestMoveTokenByGame = new Map();
   ui.hideResultDialog();
   ui.showScreen("landing-screen");
   applySandboxUiVisibility(null);
@@ -236,6 +305,9 @@ function dropGameSubscription() {
   detachPresence();
   presenceCode = null;
   activeCode = null;
+  clearTurnAndQwirkleNotices();
+  lastRenderedGameToken = null;
+  lastRenderedCurrentPlayerUid = null;
 }
 
 function centerBoardIfNeeded() {
@@ -537,6 +609,7 @@ function refreshCurrentGameView() {
 
 function renderLobby(snapshot) {
   applySandboxUiVisibility(snapshot);
+  clearTurnAndQwirkleNotices();
   const meta    = snapshot.meta || {};
   const players = snapshot.players || {};
   const readiness = evaluateLobbyStartReadiness(players);
@@ -598,9 +671,13 @@ function renderGame(snapshot) {
   const rack    = game.racks?.[authUid] || [];
   const isMyTurn = myTurn();
   const sandbox = inSandboxMode(snapshot);
+  const gameToken = getGameToken(snapshot);
+  const moveEntry = latestMoveEntry(game.moveHistory || {});
+  const lastMoveCoords = lastMoveCoordsFromEntry(moveEntry);
 
   clearDraftIfOutdated(snapshot);
   const state = getState();
+  const stagedTileIds = new Set(state.tentativePlacements.map((placement) => placement.tile.id));
 
   ui.elements.gameCode.textContent = meta.joinCode || "-----";
   ui.elements.bagCount.textContent = sandbox ? "∞" : String((game.bag || []).length);
@@ -622,6 +699,7 @@ function renderGame(snapshot) {
     boardMap:            game.board || {},
     tentativePlacements: state.tentativePlacements,
     interactive:         isMyTurn,
+    lastMoveCoords,
   });
   syncBoardKeyboardFocus();
 
@@ -630,7 +708,8 @@ function renderGame(snapshot) {
     rack,
     state.selectedRackTileId,
     state.exchangeSelection,
-    state.exchangeMode
+    state.exchangeMode,
+    stagedTileIds
   );
   applySandboxUiVisibility(snapshot);
 
@@ -664,6 +743,28 @@ function renderGame(snapshot) {
 
   ui.showScreen("game-screen");
   updateActionButtonState();
+
+  if (lastRenderedGameToken !== gameToken) {
+    lastRenderedGameToken = gameToken;
+    lastRenderedCurrentPlayerUid = game.currentPlayerUid || null;
+    const baselineMoveToken = moveEntry ? `${moveEntry.moveNumber || 0}` : "none";
+    latestMoveTokenByGame.set(gameToken, baselineMoveToken);
+  } else {
+    if (game.currentPlayerUid === authUid && lastRenderedCurrentPlayerUid !== authUid) {
+      showTurnNotice();
+    }
+    lastRenderedCurrentPlayerUid = game.currentPlayerUid || null;
+
+    const currentMoveToken = moveEntry ? `${moveEntry.moveNumber || 0}` : "none";
+    const previousMoveToken = latestMoveTokenByGame.get(gameToken);
+    if (currentMoveToken !== previousMoveToken) {
+      latestMoveTokenByGame.set(gameToken, currentMoveToken);
+      const qwirkleCount = Number(moveEntry?.qwirkleCount || 0);
+      if (qwirkleCount > 0) {
+        showQwirkleNotice(qwirkleCount);
+      }
+    }
+  }
 
   if (meta.status === "finished") {
     if (finishedRevisionShown !== meta.revision) {

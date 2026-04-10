@@ -121,8 +121,9 @@ export function renderScoreboard(container, playersByUid, scoresByUid, currentPl
   container.innerHTML = rows.join("");
 }
 
-export function renderRack(container, rackTiles, selectedTileId, exchangeSelection, exchangeMode) {
+export function renderRack(container, rackTiles, selectedTileId, exchangeSelection, exchangeMode, stagedTileIds = new Set()) {
   const exchangeSet = exchangeSelection || new Set();
+  const stagedSet = stagedTileIds || new Set();
 
   if (!rackTiles?.length) {
     container.innerHTML = '<p class="rack-empty muted">Ablageständer leer.</p>';
@@ -135,6 +136,7 @@ export function renderRack(container, rackTiles, selectedTileId, exchangeSelecti
       if (selectedTileId === tile.id) classes.push("selected");
       if (exchangeSet.has(tile.id))   classes.push("exchange-selected");
       if (exchangeMode)               classes.push("exchange-mode-active");
+      if (stagedSet.has(tile.id))     classes.push("staged");
 
       const marker = exchangeMode && exchangeSet.has(tile.id)
         ? '<span class="rack-marker">✕</span>'
@@ -155,7 +157,8 @@ export function renderRack(container, rackTiles, selectedTileId, exchangeSelecti
     .join("");
 }
 
-export function renderBoardGrid(container, { boardMap, tentativePlacements, interactive }) {
+export function renderBoardGrid(container, { boardMap, tentativePlacements, interactive, lastMoveCoords = [] }) {
+  const highlightedCoords = new Set(lastMoveCoords || []);
   const tentativeMap = new Map();
   for (const p of tentativePlacements || []) {
     tentativeMap.set(coordinateKey(p.x, p.y), p.tile);
@@ -176,6 +179,7 @@ export function renderBoardGrid(container, { boardMap, tentativePlacements, inte
       const classes = ["board-cell"];
       if (!tile && interactive) classes.push("clickable");
       if (!tile && cell.x === 0 && cell.y === 0) classes.push("center-origin");
+      if (permanentTile && highlightedCoords.has(cell.key)) classes.push("last-move");
 
       const inner = tile
         ? renderTileHtml(tile, { tentative: Boolean(tentativeTile) })
@@ -211,7 +215,9 @@ export function renderMoveHistory(container, playersByUid, moveHistory) {
   const nameOf = (uid) => playersByUid?.[uid]?.name || "Unbekannt";
   const describe = (entry) => {
     if (entry.type === "move") {
-      return `${nameOf(entry.uid)}: gelegt (${entry.tileIds?.length || 0}) · +${Number(entry.scoreGain || 0)}`;
+      const qwirkleCount = Number(entry.qwirkleCount || 0);
+      const qwirkleLabel = qwirkleCount > 0 ? ` · Qwirkle x${qwirkleCount}` : "";
+      return `${nameOf(entry.uid)}: gelegt (${entry.tileIds?.length || 0}) · +${Number(entry.scoreGain || 0)}${qwirkleLabel}`;
     }
     if (entry.type === "exchange") {
       return `${nameOf(entry.uid)}: getauscht (${entry.tileIds?.length || 0})`;

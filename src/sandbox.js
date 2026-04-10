@@ -292,6 +292,7 @@ export function sandboxCommitMove(snapshot, uid, draftPlacements, { strictValida
 
   let boardAfter = { ...(game.board || {}) };
   let scoreGain = 0;
+  let qwirkleCount = 0;
   if (strictValidation) {
     const validation = validateMove(boardAfter, placements, {
       isOpeningMove: Object.keys(boardAfter).length === 0,
@@ -300,7 +301,12 @@ export function sandboxCommitMove(snapshot, uid, draftPlacements, { strictValida
       return { ok: false, error: validation.reason, snapshot };
     }
     boardAfter = validation.boardAfter;
-    scoreGain = Number(calculateMoveScore(game.board || {}, placements).score || 0);
+    const scoreResult = calculateMoveScore(game.board || {}, placements);
+    scoreGain = Number(scoreResult.score || 0);
+    qwirkleCount = (scoreResult.lines || []).reduce(
+      (count, line) => count + (line.tiles?.length === 6 ? 1 : 0),
+      0
+    );
   } else {
     for (const placement of placements) {
       boardAfter[coordinateKey(placement.x, placement.y)] = placement.tile;
@@ -323,6 +329,7 @@ export function sandboxCommitMove(snapshot, uid, draftPlacements, { strictValida
       tileId: placement.tile.id,
     })),
     scoreGain,
+    qwirkleCount,
   });
   nextTurn(game);
   next.meta.revision = Number(next.meta.revision || 0) + 1;
@@ -470,4 +477,3 @@ export function sandboxSimulateCurrentPlayer(snapshot, { strictValidation = true
     summary: `Simulierter Zug: ${best.placements.length} Stein(e), +${best.score} Punkte.`,
   };
 }
-
