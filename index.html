@@ -142,10 +142,9 @@
           <!-- Top bar -->
           <div class="game-topbar">
             <div class="topbar-meta">
-              <span class="meta-chip">
-                <span class="meta-chip-label">Spiel</span>
-                <span id="game-code" class="meta-chip-value">-----</span>
-              </span>
+              <button id="sidebar-toggle-btn" class="sidebar-toggle-btn active" type="button" aria-label="Seitenleiste ein-/ausblenden" title="Punkte &amp; Verlauf">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              </button>
               <span class="meta-chip">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" class="meta-chip-icon"><path d="M20 7H4C2.9 7 2 7.9 2 9v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm-9 8H7v-2h4v2zm6 0h-4v-2h4v2zm1-5H6V9h12v1z"/></svg>
                 <span id="bag-count" class="meta-chip-value">0</span>
@@ -159,6 +158,7 @@
             <div class="topbar-right">
               <span id="game-status" class="game-status-badge"></span>
               <span id="sandbox-mode-badge" class="sandbox-mode-badge hidden">Sandbox</span>
+              <div id="theme-switcher" class="theme-switcher" aria-label="Thema wählen"></div>
               <div class="zoom-controls" aria-label="Board Zoom">
                 <button id="zoom-out-btn" class="btn btn-ghost-sm btn-sm zoom-btn" type="button" aria-label="Herauszoomen">−</button>
                 <button id="zoom-reset-btn" class="btn btn-ghost-sm btn-sm zoom-reset-btn" type="button" aria-label="Zoom zurücksetzen">
@@ -174,8 +174,14 @@
           <div class="game-body">
 
             <!-- Score sidebar -->
-            <aside class="scores-sidebar">
-              <h3 class="sidebar-title">Punkte</h3>
+            <aside class="scores-sidebar" id="scores-sidebar">
+              <div class="sidebar-header-row">
+                <h3 class="sidebar-title">Punkte</h3>
+                <span class="meta-chip sidebar-game-code">
+                  <span class="meta-chip-label">Spiel</span>
+                  <span id="game-code" class="meta-chip-value">-----</span>
+                </span>
+              </div>
               <ul id="scoreboard" class="score-list"></ul>
               <div class="history-panel">
                 <h4 class="history-title">Letzte Züge</h4>

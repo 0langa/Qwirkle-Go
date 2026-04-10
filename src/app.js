@@ -68,6 +68,8 @@ import {
   sandboxResizePlayers,
   sandboxSimulateCurrentPlayer,
 } from "./sandbox.js";
+import { initTheme, applyTheme, THEMES } from "./themes.js";
+import { initLayoutDetection, getLayoutMode } from "./layout-detect.js";
 
 const ui = createUi();
 
@@ -99,6 +101,7 @@ const DEV_TOOLS_STORAGE_KEY = "qwirkle.devToolsEnabled";
 let boardKeyboardFocus = { x: 0, y: 0 };
 let devToolsEnabled = DEV_MODE;
 let sandboxStrictValidation = true;
+let sidebarVisible = true;
 
 // ─── Busy ────────────────────────────────────────────────────────────────────
 
@@ -364,6 +367,45 @@ function setDevToolsEnabled(enabled) {
   }
   applyDevUiVisibility();
   updateActionButtonState();
+}
+
+// ─── Sidebar toggle ──────────────────────────────────────────────────────────
+
+function toggleSidebar() {
+  sidebarVisible = !sidebarVisible;
+  applySidebarState();
+}
+
+function applySidebarState() {
+  const sidebar = ui.elements.scoresSidebar;
+  const btn = ui.elements.sidebarToggleBtn;
+  if (sidebar) {
+    sidebar.classList.toggle("collapsed", !sidebarVisible);
+  }
+  if (btn) {
+    btn.classList.toggle("active", sidebarVisible);
+    btn.setAttribute("aria-expanded", String(sidebarVisible));
+  }
+}
+
+// ─── Theme switcher ──────────────────────────────────────────────────────────
+
+function renderThemeSwitcher() {
+  const container = ui.elements.themeSwitcher;
+  if (!container) return;
+  const currentTheme = document.documentElement.getAttribute("data-theme") || "light";
+  container.innerHTML = THEMES.map((t) => {
+    const active = t.id === currentTheme ? " active" : "";
+    return `<button class="theme-btn${active}" data-theme-id="${t.id}" type="button" title="${t.label}" aria-label="Thema: ${t.label}">${t.icon}</button>`;
+  }).join("");
+}
+
+function handleThemeSwitcherClick(e) {
+  const btn = e.target.closest("[data-theme-id]");
+  if (!btn) return;
+  const id = btn.dataset.themeId;
+  applyTheme(id);
+  renderThemeSwitcher();
 }
 
 function getBoardCellElement(x, y) {
@@ -1706,6 +1748,16 @@ function bindUiEvents() {
   ui.elements.sandboxClearBoardBtn.addEventListener("click", handleSandboxClearBoard);
   ui.elements.sandboxResetBtn.addEventListener("click", handleSandboxReset);
 
+  // Sidebar toggle
+  if (ui.elements.sidebarToggleBtn) {
+    ui.elements.sidebarToggleBtn.addEventListener("click", toggleSidebar);
+  }
+
+  // Theme switcher
+  if (ui.elements.themeSwitcher) {
+    ui.elements.themeSwitcher.addEventListener("click", handleThemeSwitcherClick);
+  }
+
   window.addEventListener("beforeunload", () => detachPresence());
   window.addEventListener("resize", refreshBoardZoomStyles);
 
@@ -1744,10 +1796,22 @@ function applyJoinCodeFromUrl() {
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 
 export async function startApp() {
+  // Initialise theme and layout detection early
+  initTheme();
+  initLayoutDetection();
+
   bindUiEvents();
   devToolsEnabled = loadDevToolsPreference();
   applyDevUiVisibility();
   applyLoadedDisplayName();
+  renderThemeSwitcher();
+  applySidebarState();
+
+  // Auto-collapse sidebar on mobile
+  if (getLayoutMode() === "mobile") {
+    sidebarVisible = false;
+    applySidebarState();
+  }
 
   // Disable inputs while Firebase initialises
   ui.elements.displayNameInput.disabled = true;
