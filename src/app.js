@@ -1186,8 +1186,20 @@ function initBoardPanning() {
       if (activeTouchPointers.size === 2) {
         const points = [...activeTouchPointers.values()];
         const dist = Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y);
+        const midX = (points[0].x + points[1].x) / 2;
+        const midY = (points[0].y + points[1].y) / 2;
+        const grid = ui.elements.boardGrid;
+        if (grid) {
+          const gridRect = grid.getBoundingClientRect();
+          grid.style.transformOrigin = `${midX - gridRect.left}px ${midY - gridRect.top}px`;
+          grid.style.willChange = "transform";
+        }
+        scroller.classList.add("pinching");
         pinchState = {
           distance: dist,
+          visualScale: 1,
+          rafId: null,
+          lastMid: { x: midX, y: midY },
         };
         panState = null;
         scroller.classList.remove("panning");
@@ -1224,9 +1236,21 @@ function initBoardPanning() {
 
       if (pinchState.distance > 0 && dist > 0) {
         const scale = dist / pinchState.distance;
-        applyBoardZoom(boardZoom * scale, midX, midY);
+        pinchState.visualScale *= scale;
+        pinchState.lastMid = { x: midX, y: midY };
       }
       pinchState.distance = dist;
+
+      if (!pinchState.rafId) {
+        pinchState.rafId = requestAnimationFrame(() => {
+          const grid = ui.elements.boardGrid;
+          if (grid && pinchState) {
+            grid.style.transform = `scale(${pinchState.visualScale})`;
+          }
+          if (pinchState) pinchState.rafId = null;
+        });
+      }
+
       suppressBoardClickUntil = performance.now() + 260;
       event.preventDefault();
       return;
@@ -1249,8 +1273,21 @@ function initBoardPanning() {
   function endPan(event) {
     if (event.pointerType === "touch") {
       activeTouchPointers.delete(event.pointerId);
-      if (activeTouchPointers.size < 2) {
+      if (activeTouchPointers.size < 2 && pinchState) {
+        const grid = ui.elements.boardGrid;
+        if (pinchState.rafId) cancelAnimationFrame(pinchState.rafId);
+        if (grid) {
+          grid.style.transform = "";
+          grid.style.transformOrigin = "";
+          grid.style.willChange = "";
+        }
+        scroller.classList.remove("pinching");
+        const finalZoom = boardZoom * pinchState.visualScale;
+        const mid = pinchState.lastMid;
         pinchState = null;
+        applyBoardZoom(finalZoom, mid.x, mid.y);
+        suppressBoardClickUntil = performance.now() + 260;
+        return;
       }
     }
 

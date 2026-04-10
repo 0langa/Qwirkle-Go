@@ -978,6 +978,12 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
   background-image:
     radial-gradient(circle at 20% 20%, rgba(255,255,255,0.03) 0%, transparent 60%),
     radial-gradient(circle at 80% 80%, rgba(0,0,0,0.08) 0%, transparent 60%);
+  aspect-ratio: 1 / 1;
+  max-height: 100%;
+  max-width: 100%;
+  align-self: center;
+  justify-self: center;
+  border-radius: var(--r-lg);
 }
 
 .board-scroll {
@@ -996,7 +1002,8 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
   user-select: none;
 }
 
-.board-scroll.drag-active {
+.board-scroll.drag-active,
+.board-scroll.pinching {
   touch-action: none;
 }
 
