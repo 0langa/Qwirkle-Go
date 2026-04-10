@@ -53,6 +53,21 @@ import {
   hasOpeningPlacementRequirement,
   OFFLINE_SKIP_GRACE_MS,
 } from "./turn-guards.js";
+import {
+  createSandboxSnapshot,
+  isSandboxSnapshot,
+  sandboxAdvanceTurn,
+  sandboxClearBoard,
+  sandboxCommitMove,
+  sandboxExchangeTiles,
+  sandboxForceCurrentPlayer,
+  sandboxInjectTile,
+  sandboxPassTurn,
+  sandboxRefillRack,
+  sandboxRerollRack,
+  sandboxResizePlayers,
+  sandboxSimulateCurrentPlayer,
+} from "./sandbox.js";
 
 const ui = createUi();
 
@@ -83,6 +98,7 @@ const DEV_TOOLS_STORAGE_KEY = "qwirkle.devToolsEnabled";
 
 let boardKeyboardFocus = { x: 0, y: 0 };
 let devToolsEnabled = DEV_MODE;
+let sandboxStrictValidation = true;
 
 // ─── Busy ────────────────────────────────────────────────────────────────────
 
@@ -130,6 +146,10 @@ function currentSnapshot() {
   return getState().gameSnapshot;
 }
 
+function inSandboxMode(snapshot = currentSnapshot()) {
+  return isSandboxSnapshot(snapshot);
+}
+
 function myRack() {
   return currentSnapshot()?.game?.racks?.[authUid] || [];
 }
@@ -159,100 +179,40 @@ function clearMessages() {
   setGameMessage("");
 }
 
-function createDevSandboxSnapshot(currentUid) {
-  const now = Date.now();
-  const meUid = currentUid || "dev-local-user";
-  const enemyUid = "dev-local-opponent";
-
-  const makeTile = (id, color, shape) => ({ id, color, shape });
-
-  return {
-    meta: {
-      joinCode: "DEV00",
-      status: "in_progress",
-      hostUid: meUid,
-      createdAt: now,
-      startedAt: now,
-      endedAt: null,
-      revision: 1,
-      maxPlayers: 4,
-    },
-    players: {
-      [meUid]: {
-        uid: meUid,
-        name: "Du (Dev)",
-        isHost: true,
-        joinedAt: now - 2000,
-        connected: true,
-        lastSeenAt: now,
-      },
-      [enemyUid]: {
-        uid: enemyUid,
-        name: "Testgegner",
-        isHost: false,
-        joinedAt: now - 1000,
-        connected: true,
-        lastSeenAt: now,
-      },
-    },
-    game: {
-      board: {},
-      bag: Array.from({ length: 80 }, (_, i) => makeTile(`bag-${i}`, "blue", "circle")),
-      racks: {
-        [meUid]: [
-          makeTile("dev-r1", "red", "star"),
-          makeTile("dev-r2", "orange", "square"),
-          makeTile("dev-r3", "yellow", "circle"),
-          makeTile("dev-r4", "green", "diamond"),
-          makeTile("dev-r5", "blue", "clover"),
-          makeTile("dev-r6", "purple", "cross"),
-        ],
-        [enemyUid]: [
-          makeTile("dev-e1", "red", "circle"),
-          makeTile("dev-e2", "red", "square"),
-          makeTile("dev-e3", "red", "diamond"),
-          makeTile("dev-e4", "red", "star"),
-          makeTile("dev-e5", "red", "clover"),
-          makeTile("dev-e6", "red", "cross"),
-        ],
-      },
-      scores: {
-        [meUid]: 0,
-        [enemyUid]: 0,
-      },
-      turnOrder: [meUid, enemyUid],
-      currentTurnIndex: 0,
-      currentPlayerUid: meUid,
-      openingRequirement: null,
-      consecutivePasses: 0,
-      moveNumber: 0,
-      moveHistory: {},
-      winnerUids: [],
-      finalStandings: [],
-    },
-  };
-}
-
 async function handleDevEnterGame() {
   if (!devToolsEnabled) return;
   clearMessages();
   ui.hideResultDialog();
   dropGameSubscription();
+  clearSession();
   resetTurnDraft();
 
   if (!authUid) {
     authUid = getAuthUser()?.uid || "dev-local-user";
   }
 
-  const snapshot = createDevSandboxSnapshot(authUid);
+  const displayName = sanitizeDisplayName(ui.elements.displayNameInput.value) || "Du (Sandbox)";
+  const selectedPlayers = Number(ui.elements.sandboxPlayerCount?.value || 3);
+  const snapshot = createSandboxSnapshot({
+    testerUid: authUid,
+    testerName: `${displayName} (Sandbox)`,
+    playerCount: selectedPlayers,
+  });
+  sandboxStrictValidation = true;
+  if (ui.elements.sandboxStrictToggle) {
+    ui.elements.sandboxStrictToggle.checked = true;
+  }
+  if (ui.elements.sandboxPlayersSelect) {
+    ui.elements.sandboxPlayersSelect.value = String(selectedPlayers);
+  }
   patchState({
     activeCode: null,
     gameSnapshot: snapshot,
     boardHasCentered: false,
   });
-  ui.setConnectionState("Lokaler Dev-Testmodus", "neutral");
+  ui.setConnectionState("Sandbox lokal", "neutral");
   renderBySnapshot(snapshot);
-  setGameMessage("Dev-Testmodus aktiv: UI und Zugentwurf lokal testen (ohne Firebase-Schreibzugriffe).");
+  setGameMessage("Sandbox aktiv: lokale Testpartie ohne Firebase. Nutze die Sandbox-Steuerung für schnelle Szenarien.");
 }
 
 // ─── Screen navigation ───────────────────────────────────────────────────────
@@ -263,6 +223,7 @@ function openLanding(message = "", tone = "") {
   finishedRevisionShown = null;
   ui.hideResultDialog();
   ui.showScreen("landing-screen");
+  applySandboxUiVisibility(null);
   if (message) setLandingMessage(message, tone);
 }
 
@@ -348,6 +309,7 @@ function applyDevUiVisibility() {
   const devEntry = ui.elements.devEnterGameBtn;
   const devDelete = ui.elements.devDeleteGameBtn;
   const devToggle = ui.elements.devToolsToggleBtn;
+  const sandboxEntryTools = ui.elements.sandboxEntryTools;
 
   if (devEntry) {
     devEntry.classList.toggle("hidden", !devToolsEnabled);
@@ -359,6 +321,26 @@ function applyDevUiVisibility() {
     devToggle.textContent = devToolsEnabled ? "Dev-Tools deaktivieren" : "Dev-Tools aktivieren";
     devToggle.setAttribute("aria-pressed", String(devToolsEnabled));
     devToggle.classList.toggle("active", devToolsEnabled);
+  }
+  if (sandboxEntryTools) {
+    sandboxEntryTools.classList.toggle("hidden", !devToolsEnabled);
+  }
+}
+
+function applySandboxUiVisibility(snapshot = currentSnapshot()) {
+  const active = inSandboxMode(snapshot);
+  if (ui.elements.sandboxPanel) {
+    ui.elements.sandboxPanel.classList.toggle("hidden", !active);
+  }
+  if (ui.elements.sandboxModeBadge) {
+    ui.elements.sandboxModeBadge.classList.toggle("hidden", !active);
+  }
+  if (ui.elements.sandboxStrictToggle) {
+    ui.elements.sandboxStrictToggle.checked = sandboxStrictValidation;
+  }
+
+  if (ui.elements.sandboxPlayersSelect && snapshot?.game?.turnOrder?.length) {
+    ui.elements.sandboxPlayersSelect.value = String(snapshot.game.turnOrder.length);
   }
 }
 
@@ -443,10 +425,13 @@ function moveBoardKeyboardFocus(dx, dy) {
 
 function updateActionButtonState() {
   const snapshot = currentSnapshot();
+  const sandbox = inSandboxMode(snapshot);
   const state = getState();
   const inProgress       = snapshot?.meta?.status === "in_progress";
   const isMyTurn         = myTurn();
-  const openingRequiredForMe = hasOpeningPlacementRequirement(snapshot?.game, authUid);
+  const openingRequiredForMe = sandbox
+    ? false
+    : hasOpeningPlacementRequirement(snapshot?.game, authUid);
   const hasTentative     = state.tentativePlacements.length > 0;
   const hasExchangeSel   = state.exchangeSelection.size > 0;
   const gamePlayers = snapshot?.players || {};
@@ -469,20 +454,22 @@ function updateActionButtonState() {
     actionBusy || !inProgress || !isMyTurn ||
     (!hasTentative && !state.exchangeSelection.size && !state.selectedRackTileId);
   ui.elements.exchangeModeBtn.disabled =
-    actionBusy || !inProgress || !isMyTurn || hasTentative || openingRequiredForMe;
+    actionBusy || !inProgress || !isMyTurn || hasTentative || (!sandbox && openingRequiredForMe);
   ui.elements.exchangeSelectedBtn.disabled =
-    actionBusy || !inProgress || !isMyTurn || !state.exchangeMode || !hasExchangeSel || openingRequiredForMe;
+    actionBusy || !inProgress || !isMyTurn || !state.exchangeMode || !hasExchangeSel || (!sandbox && openingRequiredForMe);
   ui.elements.passTurnBtn.disabled =
     actionBusy || !inProgress || !isMyTurn || hasTentative;
-  ui.elements.skipOfflineBtn.classList.toggle("hidden", !inProgress || !isHost);
-  ui.elements.skipOfflineBtn.disabled = actionBusy || !canSkipOffline;
-  ui.elements.skipOfflineBtn.title = canSkipOffline
-    ? "Offline-Spielerzug überspringen"
-    : "Nur der Host kann einen offline Spieler nach 20 Sekunden überspringen";
+  ui.elements.skipOfflineBtn.classList.toggle("hidden", sandbox || !inProgress || !isHost);
+  ui.elements.skipOfflineBtn.disabled = sandbox || actionBusy || !canSkipOffline;
+  ui.elements.skipOfflineBtn.title = sandbox
+    ? "In Sandbox nicht erforderlich"
+    : canSkipOffline
+      ? "Offline-Spielerzug überspringen"
+      : "Nur der Host kann einen offline Spieler nach 20 Sekunden überspringen";
 
   if (ui.elements.devDeleteGameBtn) {
-    ui.elements.devDeleteGameBtn.classList.toggle("hidden", !devToolsEnabled);
-    ui.elements.devDeleteGameBtn.disabled = actionBusy || !activeCode;
+    ui.elements.devDeleteGameBtn.classList.toggle("hidden", !devToolsEnabled || sandbox);
+    ui.elements.devDeleteGameBtn.disabled = actionBusy || sandbox || !activeCode;
   }
 
   // Visual feedback: exchange mode toggle
@@ -508,6 +495,34 @@ function updateActionButtonState() {
     badge.classList.add("hidden");
     badge.classList.remove("my-turn");
   }
+
+  if (ui.elements.sandboxNextTurnBtn) {
+    ui.elements.sandboxNextTurnBtn.disabled = !sandbox || actionBusy || !inProgress;
+  }
+  if (ui.elements.sandboxForceMeBtn) {
+    ui.elements.sandboxForceMeBtn.disabled = !sandbox || actionBusy || !inProgress;
+  }
+  if (ui.elements.sandboxSimulateTurnBtn) {
+    ui.elements.sandboxSimulateTurnBtn.disabled = !sandbox || actionBusy || !inProgress;
+  }
+  if (ui.elements.sandboxRerollRackBtn) {
+    ui.elements.sandboxRerollRackBtn.disabled = !sandbox || actionBusy || !inProgress;
+  }
+  if (ui.elements.sandboxRefillRackBtn) {
+    ui.elements.sandboxRefillRackBtn.disabled = !sandbox || actionBusy || !inProgress;
+  }
+  if (ui.elements.sandboxInjectTileBtn) {
+    ui.elements.sandboxInjectTileBtn.disabled = !sandbox || actionBusy || !inProgress;
+  }
+  if (ui.elements.sandboxClearBoardBtn) {
+    ui.elements.sandboxClearBoardBtn.disabled = !sandbox || actionBusy || !inProgress;
+  }
+  if (ui.elements.sandboxResetBtn) {
+    ui.elements.sandboxResetBtn.disabled = !sandbox || actionBusy;
+  }
+  if (ui.elements.sandboxApplyPlayersBtn) {
+    ui.elements.sandboxApplyPlayersBtn.disabled = !sandbox || actionBusy || !inProgress;
+  }
 }
 
 // ─── Render helpers ──────────────────────────────────────────────────────────
@@ -520,6 +535,7 @@ function refreshCurrentGameView() {
 }
 
 function renderLobby(snapshot) {
+  applySandboxUiVisibility(snapshot);
   const meta    = snapshot.meta || {};
   const players = snapshot.players || {};
   const readiness = evaluateLobbyStartReadiness(players);
@@ -580,12 +596,13 @@ function renderGame(snapshot) {
   const players = snapshot.players || {};
   const rack    = game.racks?.[authUid] || [];
   const isMyTurn = myTurn();
+  const sandbox = inSandboxMode(snapshot);
 
   clearDraftIfOutdated(snapshot);
   const state = getState();
 
   ui.elements.gameCode.textContent = meta.joinCode || "-----";
-  ui.elements.bagCount.textContent = String((game.bag || []).length);
+  ui.elements.bagCount.textContent = sandbox ? "∞" : String((game.bag || []).length);
   ui.elements.turnIndicator.textContent =
     players?.[game.currentPlayerUid]?.name || "–";
 
@@ -614,24 +631,33 @@ function renderGame(snapshot) {
     state.exchangeSelection,
     state.exchangeMode
   );
+  applySandboxUiVisibility(snapshot);
 
   if (meta.status === "in_progress") {
-    const currentPlayer = players?.[game.currentPlayerUid];
-    const currentOffline = currentPlayer && currentPlayer.connected === false;
-    if (currentOffline) {
-      const canSkip = meta.hostUid === authUid && !isMyTurn;
-      setGameMessage(
-        canSkip
-          ? `${currentPlayer.name} ist offline. Du kannst den Zug nach 20 Sekunden überspringen.`
-          : `${currentPlayer.name} ist offline. Warte auf Rückkehr oder auf den Host.`,
-        "error"
-      );
-    } else {
+    if (sandbox) {
       setGameMessage(
         isMyTurn
-          ? "Du bist dran: Steine legen, tauschen oder passen."
-          : "Warte auf den anderen Spieler…"
+          ? "Sandbox: Dein Zug. Bestätigen, passen oder Sandbox-Aktionen nutzen."
+          : `Sandbox: ${players?.[game.currentPlayerUid]?.name || "Bot"} ist dran. Nutze „Gegner simulieren“ oder „Nächster Zug“.`
       );
+    } else {
+      const currentPlayer = players?.[game.currentPlayerUid];
+      const currentOffline = currentPlayer && currentPlayer.connected === false;
+      if (currentOffline) {
+        const canSkip = meta.hostUid === authUid && !isMyTurn;
+        setGameMessage(
+          canSkip
+            ? `${currentPlayer.name} ist offline. Du kannst den Zug nach 20 Sekunden überspringen.`
+            : `${currentPlayer.name} ist offline. Warte auf Rückkehr oder auf den Host.`,
+          "error"
+        );
+      } else {
+        setGameMessage(
+          isMyTurn
+            ? "Du bist dran: Steine legen, tauschen oder passen."
+            : "Warte auf den anderen Spieler…"
+        );
+      }
     }
   }
 
@@ -662,6 +688,7 @@ function renderGame(snapshot) {
 
 function renderBySnapshot(snapshot) {
   if (!snapshot) { openLanding(); return; }
+  applySandboxUiVisibility(snapshot);
   const me = snapshot.players?.[authUid];
   if (!me) {
     clearSession();
@@ -1275,6 +1302,22 @@ async function handleCommitMove() {
     setGameMessage("Platziere mindestens einen Stein, bevor du bestätigst.", "error");
     return;
   }
+
+  if (inSandboxMode()) {
+    const result = sandboxCommitMove(currentSnapshot(), authUid, draft, {
+      strictValidation: sandboxStrictValidation,
+    });
+    if (!result.ok) {
+      setGameMessage(result.error || "Sandbox-Zug ungültig.", "error");
+      return;
+    }
+    resetTurnDraft();
+    patchState({ gameSnapshot: result.snapshot, boardHasCentered: false });
+    renderBySnapshot(result.snapshot);
+    setGameMessage(`Sandbox-Zug bestätigt (+${result.scoreGain}).`, "success");
+    return;
+  }
+
   try {
     setBusy(true);
     await commitMove(
@@ -1293,7 +1336,7 @@ async function handleCommitMove() {
 
 function toggleExchangeMode() {
   const state = getState();
-  if (hasOpeningPlacementRequirement(currentSnapshot()?.game, authUid)) {
+  if (!inSandboxMode() && hasOpeningPlacementRequirement(currentSnapshot()?.game, authUid)) {
     setGameMessage("Lege zuerst den verpflichtenden Eröffnungszug. Tauschen ist bis dahin gesperrt.", "error");
     return;
   }
@@ -1309,6 +1352,25 @@ function toggleExchangeMode() {
 
 async function handleExchangeSelected() {
   if (!myTurn()) return;
+  if (inSandboxMode()) {
+    const state = getState();
+    if (!state.exchangeMode) {
+      setGameMessage("Aktiviere zuerst den Tauschmodus.", "error");
+      return;
+    }
+    const selected = [...state.exchangeSelection];
+    if (!selected.length) {
+      setGameMessage("Markiere mindestens einen Stein zum Tauschen.", "error");
+      return;
+    }
+    const next = sandboxExchangeTiles(currentSnapshot(), authUid, selected);
+    resetTurnDraft();
+    patchState({ gameSnapshot: next, boardHasCentered: false });
+    renderBySnapshot(next);
+    setGameMessage("Sandbox: Steine wurden lokal getauscht.", "success");
+    return;
+  }
+
   if (hasOpeningPlacementRequirement(currentSnapshot()?.game, authUid)) {
     setGameMessage("Tauschen ist im verpflichtenden Eröffnungszug nicht erlaubt.", "error");
     return;
@@ -1341,6 +1403,20 @@ async function handlePassTurn() {
     setGameMessage("Bestätige oder verwerfe zuerst deine Platzierungen.", "error");
     return;
   }
+
+  if (inSandboxMode()) {
+    const result = sandboxPassTurn(currentSnapshot(), authUid);
+    if (!result.ok) {
+      setGameMessage(result.error || "Sandbox-Zug konnte nicht gepasst werden.", "error");
+      return;
+    }
+    resetTurnDraft();
+    patchState({ gameSnapshot: result.snapshot, boardHasCentered: false });
+    renderBySnapshot(result.snapshot);
+    setGameMessage("Sandbox: Zug gepasst.", "success");
+    return;
+  }
+
   const confirmed = window.confirm("Zug wirklich passen?");
   if (!confirmed) return;
   try {
@@ -1440,6 +1516,99 @@ function handleDevToolsToggle() {
   setDevToolsEnabled(!devToolsEnabled);
 }
 
+function commitSandboxSnapshot(nextSnapshot, message = "", tone = "") {
+  resetTurnDraft();
+  patchState({ gameSnapshot: nextSnapshot, boardHasCentered: false });
+  renderBySnapshot(nextSnapshot);
+  if (message) {
+    setGameMessage(message, tone);
+  }
+}
+
+function handleSandboxStrictToggle() {
+  sandboxStrictValidation = Boolean(ui.elements.sandboxStrictToggle?.checked);
+  setGameMessage(
+    sandboxStrictValidation
+      ? "Sandbox-Regeln: strikt (Qwirkle-Validierung aktiv)."
+      : "Sandbox-Regeln: relaxed (frei platzieren für UI-/Board-Tests)."
+  );
+}
+
+function handleSandboxApplyPlayers() {
+  if (!inSandboxMode()) return;
+  const count = Number(ui.elements.sandboxPlayersSelect?.value || 3);
+  const next = sandboxResizePlayers(currentSnapshot(), count);
+  commitSandboxSnapshot(next, `Sandbox-Spielerzahl auf ${count} gesetzt.`, "success");
+}
+
+function handleSandboxNextTurn() {
+  if (!inSandboxMode()) return;
+  const next = sandboxAdvanceTurn(currentSnapshot(), {
+    byUid: authUid,
+    reason: "dev_next_turn",
+  });
+  commitSandboxSnapshot(next, "Sandbox: zum nächsten Spieler gewechselt.", "success");
+}
+
+function handleSandboxForceMe() {
+  if (!inSandboxMode()) return;
+  const next = sandboxForceCurrentPlayer(currentSnapshot(), authUid, {
+    byUid: authUid,
+  });
+  commitSandboxSnapshot(next, "Sandbox: aktiven Spieler auf dich gesetzt.", "success");
+}
+
+function handleSandboxSimulateTurn() {
+  if (!inSandboxMode()) return;
+  const result = sandboxSimulateCurrentPlayer(currentSnapshot(), {
+    strictValidation: sandboxStrictValidation,
+  });
+  if (!result.ok) {
+    setGameMessage(result.error || "Sandbox: Gegnerzug konnte nicht simuliert werden.", "error");
+    return;
+  }
+  commitSandboxSnapshot(result.snapshot, result.summary || "Sandbox: Gegnerzug simuliert.", "success");
+}
+
+function handleSandboxRerollRack() {
+  if (!inSandboxMode()) return;
+  const next = sandboxRerollRack(currentSnapshot(), authUid);
+  commitSandboxSnapshot(next, "Sandbox: Rack neu gemischt.", "success");
+}
+
+function handleSandboxRefillRack() {
+  if (!inSandboxMode()) return;
+  const next = sandboxRefillRack(currentSnapshot(), authUid);
+  commitSandboxSnapshot(next, "Sandbox: Rack auf 6 ergänzt.", "success");
+}
+
+function handleSandboxInjectTile() {
+  if (!inSandboxMode()) return;
+  const color = ui.elements.sandboxInjectColor?.value || "red";
+  const shape = ui.elements.sandboxInjectShape?.value || "circle";
+  const next = sandboxInjectTile(currentSnapshot(), authUid, color, shape);
+  commitSandboxSnapshot(next, "Sandbox: Tile hinzugefügt.", "success");
+}
+
+function handleSandboxClearBoard() {
+  if (!inSandboxMode()) return;
+  const next = sandboxClearBoard(currentSnapshot(), { byUid: authUid });
+  commitSandboxSnapshot(next, "Sandbox: Spielfeld geleert.", "success");
+}
+
+function handleSandboxReset() {
+  if (!inSandboxMode()) return;
+  const count = Number(ui.elements.sandboxPlayersSelect?.value || 3);
+  const displayName = sanitizeDisplayName(ui.elements.displayNameInput.value) || "Du (Sandbox)";
+  const next = createSandboxSnapshot({
+    testerUid: authUid,
+    testerName: `${displayName} (Sandbox)`,
+    playerCount: count,
+  });
+  sandboxStrictValidation = Boolean(ui.elements.sandboxStrictToggle?.checked);
+  commitSandboxSnapshot(next, "Sandbox neu gestartet.", "success");
+}
+
 // ─── Event binding ───────────────────────────────────────────────────────────
 
 function bindUiEvents() {
@@ -1489,6 +1658,16 @@ function bindUiEvents() {
   ui.elements.centerBoardBtn.addEventListener("click",     handleCenterBoard);
   ui.elements.rackHelpToggleBtn.addEventListener("click",  toggleRackHelp);
   ui.elements.devToolsToggleBtn.addEventListener("click",  handleDevToolsToggle);
+  ui.elements.sandboxStrictToggle.addEventListener("change", handleSandboxStrictToggle);
+  ui.elements.sandboxApplyPlayersBtn.addEventListener("click", handleSandboxApplyPlayers);
+  ui.elements.sandboxNextTurnBtn.addEventListener("click", handleSandboxNextTurn);
+  ui.elements.sandboxForceMeBtn.addEventListener("click", handleSandboxForceMe);
+  ui.elements.sandboxSimulateTurnBtn.addEventListener("click", handleSandboxSimulateTurn);
+  ui.elements.sandboxRerollRackBtn.addEventListener("click", handleSandboxRerollRack);
+  ui.elements.sandboxRefillRackBtn.addEventListener("click", handleSandboxRefillRack);
+  ui.elements.sandboxInjectTileBtn.addEventListener("click", handleSandboxInjectTile);
+  ui.elements.sandboxClearBoardBtn.addEventListener("click", handleSandboxClearBoard);
+  ui.elements.sandboxResetBtn.addEventListener("click", handleSandboxReset);
 
   window.addEventListener("beforeunload", () => detachPresence());
   window.addEventListener("resize", refreshBoardZoomStyles);

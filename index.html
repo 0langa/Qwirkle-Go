@@ -64,6 +64,14 @@
               <button id="dev-enter-game-btn" class="btn btn-dev-entry hidden" type="button">
                 Dev: Direkt ins Spielfeld (lokaler Testmodus)
               </button>
+              <div id="sandbox-entry-tools" class="sandbox-entry-tools hidden">
+                <label for="sandbox-player-count" class="tiny">Sandbox-Spieler</label>
+                <select id="sandbox-player-count" class="sandbox-select">
+                  <option value="2">2</option>
+                  <option value="3" selected>3</option>
+                  <option value="4">4</option>
+                </select>
+              </div>
 
               <div class="divider"><span>oder mit Code beitreten</span></div>
 
@@ -150,6 +158,7 @@
             </div>
             <div class="topbar-right">
               <span id="game-status" class="game-status-badge"></span>
+              <span id="sandbox-mode-badge" class="sandbox-mode-badge hidden">Sandbox</span>
               <div class="zoom-controls" aria-label="Board Zoom">
                 <button id="zoom-out-btn" class="btn btn-ghost-sm btn-sm zoom-btn" type="button" aria-label="Herauszoomen">−</button>
                 <button id="zoom-reset-btn" class="btn btn-ghost-sm btn-sm zoom-reset-btn" type="button" aria-label="Zoom zurücksetzen">
@@ -234,6 +243,53 @@
             </div>
 
             <p id="game-message" class="game-message" aria-live="polite"></p>
+            <section id="sandbox-panel" class="sandbox-panel hidden" aria-label="Sandbox Steuerung">
+              <div class="sandbox-panel-head">
+                <strong>Sandbox-Steuerung</strong>
+                <label class="sandbox-strict-toggle-label">
+                  <input id="sandbox-strict-toggle" type="checkbox" checked />
+                  Strikte Regeln
+                </label>
+              </div>
+              <div class="sandbox-controls-row">
+                <label for="sandbox-players-select" class="tiny">Spieler</label>
+                <select id="sandbox-players-select" class="sandbox-select">
+                  <option value="2">2</option>
+                  <option value="3" selected>3</option>
+                  <option value="4">4</option>
+                </select>
+                <button id="sandbox-apply-players-btn" class="btn btn-ghost-sm btn-sm" type="button">Anwenden</button>
+                <button id="sandbox-next-turn-btn" class="btn btn-ghost-sm btn-sm" type="button">Nächster Zug</button>
+                <button id="sandbox-force-me-btn" class="btn btn-ghost-sm btn-sm" type="button">Zu mir</button>
+                <button id="sandbox-simulate-turn-btn" class="btn btn-ghost-sm btn-sm" type="button">Gegner simulieren</button>
+              </div>
+              <div class="sandbox-controls-row">
+                <button id="sandbox-reroll-rack-btn" class="btn btn-ghost-sm btn-sm" type="button">Rack rerollen</button>
+                <button id="sandbox-refill-rack-btn" class="btn btn-ghost-sm btn-sm" type="button">Rack auffüllen</button>
+                <label for="sandbox-inject-color" class="tiny">Tile</label>
+                <select id="sandbox-inject-color" class="sandbox-select">
+                  <option value="red">Rot</option>
+                  <option value="orange">Orange</option>
+                  <option value="yellow">Gelb</option>
+                  <option value="green">Grün</option>
+                  <option value="blue">Blau</option>
+                  <option value="purple">Lila</option>
+                </select>
+                <select id="sandbox-inject-shape" class="sandbox-select">
+                  <option value="circle">Kreis</option>
+                  <option value="square">Quadrat</option>
+                  <option value="diamond">Raute</option>
+                  <option value="star">Stern</option>
+                  <option value="clover">Kleeblatt</option>
+                  <option value="cross">Kreuzstern</option>
+                </select>
+                <button id="sandbox-inject-tile-btn" class="btn btn-ghost-sm btn-sm" type="button">+ Tile</button>
+              </div>
+              <div class="sandbox-controls-row">
+                <button id="sandbox-clear-board-btn" class="btn btn-warning-sm" type="button">Board leeren</button>
+                <button id="sandbox-reset-btn" class="btn btn-danger-sm" type="button">Sandbox reset</button>
+              </div>
+            </section>
 
           </div>
 

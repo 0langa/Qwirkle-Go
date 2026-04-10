@@ -225,6 +225,27 @@ export function renderMoveHistory(container, playersByUid, moveHistory) {
     if (entry.type === "end_bonus") {
       return `${nameOf(entry.uid)}: Endbonus +${Number(entry.scoreGain || 0)}`;
     }
+    if (entry.type === "dev_next_turn") {
+      return `${nameOf(entry.byUid)}: Sandbox nächster Spieler`;
+    }
+    if (entry.type === "dev_force_player") {
+      return `${nameOf(entry.byUid)}: aktiver Spieler → ${nameOf(entry.toUid)}`;
+    }
+    if (entry.type === "dev_reroll_rack") {
+      return `${nameOf(entry.uid)}: Rack rerollt`;
+    }
+    if (entry.type === "dev_refill_rack") {
+      return `${nameOf(entry.uid)}: Rack aufgefüllt`;
+    }
+    if (entry.type === "dev_inject_tile") {
+      return `${nameOf(entry.uid)}: Tile injiziert`;
+    }
+    if (entry.type === "dev_clear_board") {
+      return `${nameOf(entry.byUid)}: Board geleert`;
+    }
+    if (entry.type === "dev_resize_players") {
+      return `Sandbox: Spielerzahl auf ${Number(entry.toCount || 0)} gesetzt`;
+    }
     return `${nameOf(entry.uid)}: ${entry.type || "Aktion"}`;
   };
 

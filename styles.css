@@ -255,6 +255,15 @@ code {
   background: #ffedd5;
 }
 
+.sandbox-entry-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  justify-content: center;
+  width: 100%;
+  color: #9a3412;
+}
+
 .btn-secondary {
   background: #e8efff;
   color: #1e3a7a;
@@ -396,6 +405,21 @@ input[type="text"]:focus {
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
 input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
+
+.sandbox-select {
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0.35rem 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.sandbox-select:focus-visible {
+  outline: 3px solid var(--accent-glow);
+  outline-offset: 2px;
+}
 
 /* ═══════════════════════════════════════════
    MESSAGE
@@ -867,6 +891,18 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
   border-color: rgba(22,163,74,0.25);
 }
 
+.sandbox-mode-badge {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #7c2d12;
+  background: #ffedd5;
+  border: 1px solid #fb923c;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 /* Game body: sidebar + board */
 .game-body {
   flex: 1;
@@ -1260,6 +1296,41 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
 .game-message.error   { color: #991b1b; }
 .game-message.success { color: var(--success); }
 
+.sandbox-panel {
+  border: 1px dashed #fb923c;
+  background: #fff7ed;
+  border-radius: var(--r-md);
+  padding: 0.55rem 0.65rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.sandbox-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+  color: #7c2d12;
+}
+
+.sandbox-strict-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  color: #7c2d12;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.sandbox-controls-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
 /* ═══════════════════════════════════════════
    DRAG GHOST
 ═══════════════════════════════════════════ */
@@ -1437,6 +1508,9 @@ input[type="text"]:disabled { background: var(--surface-inset); opacity: 0.6; }
   .btn-commit { font-size: 0.85rem; padding: 0.6rem 1rem; }
   .btn-dev-inline { padding: 0.44rem 0.6rem; font-size: 0.7rem; }
   .btn-warning-sm { padding: 0.44rem 0.6rem; font-size: 0.72rem; }
+  .sandbox-panel { padding: 0.5rem; }
+  .sandbox-controls-row .btn { padding: 0.4rem 0.55rem; }
+  .sandbox-panel-head { align-items: flex-start; flex-direction: column; }
 
   .game-topbar { flex-wrap: wrap; }
   .game-status-badge { display: none; }

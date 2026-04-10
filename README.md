@@ -27,6 +27,12 @@ It is designed for honest casual play with friends and family: no backend server
 - Missing Firebase config handling via in-app setup screen (no white screen crash).
 - Browser-based no-dependency rules test harness.
 - Node-based CI test suite for core rules/guards.
+- Dev Sandbox Mode (lokal, ohne Firebase-Schreibzugriffe) mit:
+  - simulierbaren Spielern (2-4)
+  - Zugrotation / Gegnerzug-Simulation
+  - strikter oder relaxter Validierung
+  - Rack-Reroll, Refill, Tile-Injection
+  - Board-Reset und Sandbox-Reset für schnelle QA-Szenarien
 
 ## Stack
 
