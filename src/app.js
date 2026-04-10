@@ -87,7 +87,7 @@ let boardZoom = 1;
 let pinchState = null;
 const activeTouchPointers = new Map();
 
-const MIN_BOARD_ZOOM = 0.65;
+const MIN_BOARD_ZOOM = 0.10;
 const MAX_BOARD_ZOOM = 1.8;
 const ZOOM_STEP = 0.1;
 const DEV_QUERY_ENABLED =
