@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="de" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -139,42 +139,76 @@
         <!-- ── Game screen ── -->
         <section id="game-screen" class="screen hidden" aria-live="polite">
 
-          <!-- Top bar -->
+          <!-- Top bar: essential info + controls -->
           <div class="game-topbar">
-            <div class="topbar-meta">
-              <span class="meta-chip">
-                <span class="meta-chip-label">Spiel</span>
-                <span id="game-code" class="meta-chip-value">-----</span>
-              </span>
-              <span class="meta-chip">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" class="meta-chip-icon"><path d="M20 7H4C2.9 7 2 7.9 2 9v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm-9 8H7v-2h4v2zm6 0h-4v-2h4v2zm1-5H6V9h12v1z"/></svg>
-                <span id="bag-count" class="meta-chip-value">0</span>
-              </span>
-              <span id="connection-pill" class="connection-pill pill neutral">Wird gestartet…</span>
+            <div class="topbar-start">
+              <!-- Turn indicator: primary focus -->
+              <div class="topbar-turn">
+                <span class="turn-label">Am Zug:</span>
+                <strong id="turn-indicator" class="turn-name">–</strong>
+              </div>
+              <!-- Secondary meta chips -->
+              <div class="topbar-meta">
+                <span class="meta-chip">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" class="meta-chip-icon"><path d="M20 7H4C2.9 7 2 7.9 2 9v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm-9 8H7v-2h4v2zm6 0h-4v-2h4v2zm1-5H6V9h12v1z"/></svg>
+                  <span id="bag-count" class="meta-chip-value">0</span>
+                </span>
+                <span id="connection-pill" class="connection-pill pill neutral">Wird gestartet…</span>
+              </div>
             </div>
-            <div class="topbar-turn">
-              <span class="turn-label">Am Zug:</span>
-              <strong id="turn-indicator" class="turn-name">–</strong>
-            </div>
-            <div class="topbar-right">
+
+            <div class="topbar-end">
               <span id="game-status" class="game-status-badge"></span>
               <span id="sandbox-mode-badge" class="sandbox-mode-badge hidden">Sandbox</span>
+              <!-- Zoom controls -->
               <div class="zoom-controls" aria-label="Board Zoom">
-                <button id="zoom-out-btn" class="btn btn-ghost-sm btn-sm zoom-btn" type="button" aria-label="Herauszoomen">−</button>
-                <button id="zoom-reset-btn" class="btn btn-ghost-sm btn-sm zoom-reset-btn" type="button" aria-label="Zoom zurücksetzen">
+                <button id="zoom-out-btn" class="btn btn-ghost-sm zoom-btn" type="button" aria-label="Herauszoomen">−</button>
+                <button id="zoom-reset-btn" class="btn btn-ghost-sm zoom-reset-btn" type="button" aria-label="Zoom zurücksetzen">
                   <span id="zoom-level-label">100%</span>
                 </button>
-                <button id="zoom-in-btn" class="btn btn-ghost-sm btn-sm zoom-btn" type="button" aria-label="Hineinzoomen">+</button>
+                <button id="zoom-in-btn" class="btn btn-ghost-sm zoom-btn" type="button" aria-label="Hineinzoomen">+</button>
               </div>
-              <button id="center-board-btn" class="btn btn-ghost-sm btn-sm" type="button">Zentrieren</button>
+              <!-- Center board -->
+              <button id="center-board-btn" class="btn btn-ghost-sm btn-icon-only" type="button" aria-label="Board zentrieren" title="Zentrieren">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="3"/>
+                  <line x1="12" y1="1" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="1" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="23" y2="12"/>
+                </svg>
+              </button>
+              <!-- Info panel toggle -->
+              <button id="info-panel-btn" class="btn btn-ghost-sm btn-icon-only" type="button" aria-label="Spielinfo anzeigen" aria-expanded="true" title="Punkte &amp; Züge">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+              </button>
+              <!-- Theme cycle -->
+              <button id="theme-cycle-btn" class="btn btn-ghost-sm btn-icon-only" type="button" aria-label="Design wechseln" title="Design: Hell">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="5"/>
+                  <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                </svg>
+              </button>
+              <!-- Game code chip: secondary, hidden on small screens -->
+              <span class="meta-chip topbar-code-chip">
+                <span class="meta-chip-label">Code</span>
+                <span id="game-code" class="meta-chip-value">-----</span>
+              </span>
             </div>
           </div>
 
-          <!-- Main game area -->
+          <!-- Main game area: board + collapsible info panel -->
           <div class="game-body">
 
-            <!-- Score sidebar -->
-            <aside class="scores-sidebar">
+            <!-- Board: primary focus -->
+            <div class="board-area">
+              <div id="board-scroll" class="board-scroll">
+                <div id="board-grid" class="board-grid" role="grid" aria-label="Qwirkle Spielfeld"></div>
+              </div>
+            </div>
+
+            <!-- Info panel: scores + move history (desktop column / mobile overlay) -->
+            <aside id="info-panel" class="info-panel" aria-label="Spielinformationen">
               <h3 class="sidebar-title">Punkte</h3>
               <ul id="scoreboard" class="score-list"></ul>
               <div class="history-panel">
@@ -183,16 +217,12 @@
               </div>
             </aside>
 
-            <!-- Board -->
-            <div class="board-area">
-              <div id="board-scroll" class="board-scroll">
-                <div id="board-grid" class="board-grid" role="grid" aria-label="Qwirkle Spielfeld"></div>
-              </div>
-            </div>
-
           </div>
 
-          <!-- Player dock: rack + actions -->
+          <!-- Backdrop for info panel overlay (mobile/tablet) -->
+          <div id="info-panel-backdrop" class="info-panel-backdrop" aria-hidden="true"></div>
+
+          <!-- Player dock: rack + action controls -->
           <div class="player-dock">
 
             <div class="rack-wrap">
@@ -213,10 +243,12 @@
             </div>
 
             <div class="action-bar">
+              <!-- Primary: commit move -->
               <button id="commit-move-btn" class="btn btn-commit">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 Zug bestätigen
               </button>
+              <!-- Edit actions -->
               <div class="action-group">
                 <button id="undo-placement-btn" class="btn btn-ghost-sm" title="Letzte Platzierung rückgängig">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
@@ -227,6 +259,7 @@
                   Abbrechen
                 </button>
               </div>
+              <!-- Alternative turn actions -->
               <div class="action-group action-group-sep">
                 <button id="exchange-mode-btn" class="btn btn-ghost-sm">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
@@ -243,6 +276,7 @@
             </div>
 
             <p id="game-message" class="game-message" aria-live="polite"></p>
+
             <section id="sandbox-panel" class="sandbox-panel hidden" aria-label="Sandbox Steuerung">
               <div class="sandbox-panel-head">
                 <strong>Sandbox-Steuerung</strong>

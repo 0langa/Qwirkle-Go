@@ -53,6 +53,7 @@ import {
   hasOpeningPlacementRequirement,
   OFFLINE_SKIP_GRACE_MS,
 } from "./turn-guards.js";
+import { initTheme, cycleTheme, getTheme, THEMES } from "./theme.js";
 import {
   createSandboxSnapshot,
   isSandboxSnapshot,
@@ -1646,6 +1647,57 @@ function handleSandboxReset() {
   commitSandboxSnapshot(next, "Sandbox neu gestartet.", "success");
 }
 
+// ─── Info panel ─────────────────────────────────────────────────────────────
+
+const MOBILE_BREAKPOINT = window.matchMedia("(max-width: 900px)");
+
+function isMobileLayout() {
+  return MOBILE_BREAKPOINT.matches;
+}
+
+function closeInfoPanel() {
+  const panel    = document.getElementById("info-panel");
+  const backdrop = document.getElementById("info-panel-backdrop");
+  if (!panel) return;
+  panel.classList.remove("open");
+  backdrop?.classList.remove("visible");
+  ui.elements.infoPanelBtn?.setAttribute("aria-expanded", "false");
+}
+
+function toggleInfoPanel() {
+  const panel    = document.getElementById("info-panel");
+  const backdrop = document.getElementById("info-panel-backdrop");
+  const gameBody = document.querySelector(".game-body");
+  const btn      = ui.elements.infoPanelBtn;
+  if (!panel) return;
+
+  if (isMobileLayout()) {
+    // Mobile/tablet: slide-in overlay
+    const isOpen = panel.classList.toggle("open");
+    backdrop?.classList.toggle("visible", isOpen);
+    btn?.setAttribute("aria-expanded", String(isOpen));
+  } else {
+    // Desktop: collapse/expand side column
+    const isHidden = gameBody?.classList.toggle("info-panel-hidden");
+    btn?.setAttribute("aria-expanded", String(!isHidden));
+  }
+}
+
+// ─── Theme ───────────────────────────────────────────────────────────────────
+
+function updateThemeBtnTitle() {
+  const btn = ui.elements.themeCycleBtn;
+  if (!btn) return;
+  const current = getTheme();
+  const theme   = THEMES.find((t) => t.id === current);
+  btn.title     = `Design: ${theme?.label || "Hell"} (klicken zum Wechseln)`;
+}
+
+function handleCycleTheme() {
+  cycleTheme();
+  updateThemeBtnTitle();
+}
+
 // ─── Event binding ───────────────────────────────────────────────────────────
 
 function bindUiEvents() {
@@ -1693,6 +1745,14 @@ function bindUiEvents() {
   ui.elements.zoomInBtn.addEventListener("click",          handleZoomIn);
   ui.elements.zoomResetBtn.addEventListener("click",       handleZoomReset);
   ui.elements.centerBoardBtn.addEventListener("click",     handleCenterBoard);
+  ui.elements.infoPanelBtn?.addEventListener("click",     toggleInfoPanel);
+  ui.elements.themeCycleBtn?.addEventListener("click",    handleCycleTheme);
+  document.getElementById("info-panel-backdrop")?.addEventListener("click", closeInfoPanel);
+
+  // When viewport crosses the 900px breakpoint, reset overlay state
+  MOBILE_BREAKPOINT.addEventListener("change", () => {
+    closeInfoPanel();
+  });
   ui.elements.rackHelpToggleBtn.addEventListener("click",  toggleRackHelp);
   ui.elements.devToolsToggleBtn.addEventListener("click",  handleDevToolsToggle);
   ui.elements.sandboxStrictToggle.addEventListener("change", handleSandboxStrictToggle);
@@ -1744,6 +1804,8 @@ function applyJoinCodeFromUrl() {
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 
 export async function startApp() {
+  initTheme();
+  updateThemeBtnTitle();
   bindUiEvents();
   devToolsEnabled = loadDevToolsPreference();
   applyDevUiVisibility();

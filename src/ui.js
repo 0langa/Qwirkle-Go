@@ -41,6 +41,8 @@ export function createUi() {
     zoomResetBtn: document.getElementById("zoom-reset-btn"),
     zoomLevelLabel: document.getElementById("zoom-level-label"),
     centerBoardBtn: document.getElementById("center-board-btn"),
+    infoPanelBtn: document.getElementById("info-panel-btn"),
+    themeCycleBtn: document.getElementById("theme-cycle-btn"),
     scoreboard: document.getElementById("scoreboard"),
     moveHistoryList: document.getElementById("move-history-list"),
     boardScroll: document.getElementById("board-scroll"),
